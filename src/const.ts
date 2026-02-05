@@ -2,6 +2,7 @@ export const CARD_VERSION = '1.0.0';
 export const CARD_NAME = 'weatherstation-card';
 
 export const DEFAULT_CONFIG = {
+  entity_mode: 'auto' as const,
   show_temperature: true,
   show_humidity: true,
   show_pressure: true,

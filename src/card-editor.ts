@@ -17,12 +17,38 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
       return html``;
     }
 
+    const entityMode = this._config.entity_mode || 'auto';
+
     return html`
       <div class="card-config">
-        <h3>General Settings</h3>
+        <h3>Entity Configuration</h3>
 
-        ${this.renderInput('Entity', 'entity', 'text', true)}
-        ${this.renderInput('Name', 'name', 'text', false)}
+        ${this.renderSelect('Entity Mode', 'entity_mode', [
+          { value: 'auto', label: 'Auto (Use Device)' },
+          { value: 'manual', label: 'Manual (Select Individual Entities)' },
+        ])}
+        ${entityMode === 'auto'
+          ? html`
+              <div class="entity-mode-info">
+                Select a weather device and the card will automatically use its standard entities.
+              </div>
+              ${this.renderEntityPicker(
+                'Weather Entity',
+                'entity',
+                'weather',
+                true,
+                'Main weather entity from your Ecowitt device'
+              )}
+            `
+          : html`
+              <div class="entity-mode-info">
+                Select individual sensor entities for each measurement.
+              </div>
+              ${this.renderManualEntityPickers()}
+            `}
+
+        <h3>General Settings</h3>
+        ${this.renderInput('Card Name', 'name', 'text', false)}
 
         <h3>Display Mode</h3>
         ${this.renderSelect('Display Mode', 'display_mode', [
@@ -199,6 +225,111 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
     `;
   }
 
+  private renderEntityPicker(
+    label: string,
+    configKey: string,
+    domain?: string,
+    required: boolean = false,
+    helperText?: string
+  ): TemplateResult {
+    const value = this.getNestedValue(this._config, configKey);
+
+    return html`
+      <div class="input-group">
+        <label>
+          ${label}${required ? '*' : ''}
+          ${helperText ? html`<div class="helper-text">${helperText}</div>` : ''}
+        </label>
+        <ha-entity-picker
+          .hass=${this.hass}
+          .value=${value}
+          .configKey=${configKey}
+          .includeDomains=${domain ? [domain] : undefined}
+          .required=${required}
+          @value-changed=${this._entityPickerChanged}
+          allow-custom-entity
+        ></ha-entity-picker>
+      </div>
+    `;
+  }
+
+  private renderManualEntityPickers(): TemplateResult {
+    return html`
+      <div class="manual-entities">
+        ${this.renderEntityPicker(
+          'Temperature',
+          'entities.temperature',
+          'sensor',
+          false,
+          'Temperature sensor (e.g., sensor.ecowitt_temperature)'
+        )}
+        ${this.renderEntityPicker(
+          'Humidity',
+          'entities.humidity',
+          'sensor',
+          false,
+          'Humidity sensor (e.g., sensor.ecowitt_humidity)'
+        )}
+        ${this.renderEntityPicker(
+          'Pressure',
+          'entities.pressure',
+          'sensor',
+          false,
+          'Pressure sensor (e.g., sensor.ecowitt_pressure)'
+        )}
+        ${this.renderEntityPicker(
+          'Wind Speed',
+          'entities.wind_speed',
+          'sensor',
+          false,
+          'Wind speed sensor'
+        )}
+        ${this.renderEntityPicker(
+          'Wind Direction',
+          'entities.wind_direction',
+          'sensor',
+          false,
+          'Wind direction sensor (bearing in degrees)'
+        )}
+        ${this.renderEntityPicker(
+          'Wind Gust',
+          'entities.wind_gust',
+          'sensor',
+          false,
+          'Wind gust speed sensor (optional)'
+        )}
+        ${this.renderEntityPicker(
+          'Rain',
+          'entities.rain',
+          'sensor',
+          false,
+          'Total rainfall sensor'
+        )}
+        ${this.renderEntityPicker(
+          'Rain Rate',
+          'entities.rain_rate',
+          'sensor',
+          false,
+          'Rainfall rate sensor (optional)'
+        )}
+        ${this.renderEntityPicker(
+          'UV Index',
+          'entities.uv_index',
+          'sensor',
+          false,
+          'UV index sensor'
+        )}
+        ${this.renderEntityPicker(
+          'Solar Radiation',
+          'entities.solar_radiation',
+          'sensor',
+          false,
+          'Solar radiation sensor (optional)'
+        )}
+      </div>
+    `;
+  }
+
   private getNestedValue(obj: Record<string, unknown>, path: string): unknown {
     return path.split('.').reduce((current, prop) => {
       if (current && typeof current === 'object') {
@@ -249,6 +380,29 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
     } else {
       value = target.value;
     }
+
+    const newConfig = { ...this._config };
+    this.setNestedValue(newConfig, configKey, value);
+
+    this._config = newConfig;
+    fireEvent(this, 'config-changed', { config: this._config });
+  }
+
+  private _entityPickerChanged(ev: CustomEvent): void {
+    if (!this._config || !this.hass) {
+      return;
+    }
+
+    ev.stopPropagation();
+
+    const target = ev.target as HTMLElement & { configKey?: string };
+    const configKey = target.configKey;
+
+    if (!configKey) {
+      return;
+    }
+
+    const value = ev.detail.value;
 
     const newConfig = { ...this._config };
     this.setNestedValue(newConfig, configKey, value);
@@ -326,6 +480,34 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
         margin-left: 16px;
         padding-left: 16px;
         border-left: 2px solid var(--divider-color);
+      }
+
+      .entity-mode-info {
+        padding: 12px;
+        margin-bottom: 16px;
+        background: var(--secondary-background-color, #f5f5f5);
+        border-radius: 4px;
+        font-size: 14px;
+        color: var(--secondary-text-color, #666);
+        border-left: 3px solid var(--primary-color, #03a9f4);
+      }
+
+      .helper-text {
+        font-size: 12px;
+        color: var(--secondary-text-color, #666);
+        margin-top: 4px;
+        font-style: italic;
+      }
+
+      .manual-entities {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 8px;
+      }
+
+      ha-entity-picker {
+        width: 100%;
       }
     `;
   }

@@ -68,12 +68,15 @@ type: custom:weatherstation-card
 entity: weather.home
 ```
 
-### Full Configuration
+### Full Configuration (Auto Mode - Recommended)
 
 ```yaml
 type: custom:weatherstation-card
 entity: weather.ecowitt_ws90
 name: Backyard Weather Station
+
+# Entity Mode (defaults to 'auto')
+entity_mode: auto  # 'auto' uses weather entity attributes, 'manual' for individual sensors
 
 # Display Settings
 display_mode: normal  # 'normal' or 'compact'
@@ -113,12 +116,52 @@ warnings:
     message: "🌧️ Heavy rain! Check for flooding and secure outdoor items."
 ```
 
+### Manual Entity Mode Configuration
+
+If you want to use individual sensor entities instead of a weather entity:
+
+```yaml
+type: custom:weatherstation-card
+name: Weather Station
+entity_mode: manual
+
+# Individual Sensor Entities
+entities:
+  temperature: sensor.ecowitt_outdoor_temperature
+  humidity: sensor.ecowitt_humidity
+  pressure: sensor.ecowitt_absolute_pressure
+  wind_speed: sensor.ecowitt_wind_speed
+  wind_direction: sensor.ecowitt_wind_direction
+  wind_gust: sensor.ecowitt_gust_speed
+  rain: sensor.ecowitt_rain_rate
+  rain_rate: sensor.ecowitt_rain_rate_piezo
+  uv_index: sensor.ecowitt_uvi
+  solar_radiation: sensor.ecowitt_solar_radiation
+
+# Display and other settings work the same way
+display_mode: compact
+show_wind_arrows: true
+```
+
 ### Options
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | `type` | string | **Required** | Must be `custom:weatherstation-card` |
-| `entity` | string | **Required** | Weather entity ID from your Ecowitt integration |
+| **Entity Configuration** |
+| `entity_mode` | string | `auto` | Entity mode: `auto` (use weather entity) or `manual` (individual sensors) |
+| `entity` | string | **Required** (auto mode) | Weather entity ID from your Ecowitt integration |
+| `entities.temperature` | string | Optional | Temperature sensor entity (manual mode) |
+| `entities.humidity` | string | Optional | Humidity sensor entity (manual mode) |
+| `entities.pressure` | string | Optional | Pressure sensor entity (manual mode) |
+| `entities.wind_speed` | string | Optional | Wind speed sensor entity (manual mode) |
+| `entities.wind_direction` | string | Optional | Wind direction sensor entity (manual mode) |
+| `entities.wind_gust` | string | Optional | Wind gust sensor entity (manual mode) |
+| `entities.rain` | string | Optional | Rain sensor entity (manual mode) |
+| `entities.rain_rate` | string | Optional | Rain rate sensor entity (manual mode) |
+| `entities.uv_index` | string | Optional | UV index sensor entity (manual mode) |
+| `entities.solar_radiation` | string | Optional | Solar radiation sensor entity (manual mode) |
+| **General** |
 | `name` | string | Optional | Card title. If not specified, no title is shown |
 | **Display Options** |
 | `display_mode` | string | `normal` | Display mode: `normal` (full details) or `compact` (mobile-optimized) |
