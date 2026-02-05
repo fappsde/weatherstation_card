@@ -1,20 +1,26 @@
 import { LitElement, html, css, CSSResultGroup, TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant, LovelaceCardEditor } from 'custom-card-helpers';
-import { 
-  WeatherStationCardConfig, 
-  WeatherData, 
-  Warning, 
+import {
+  WeatherStationCardConfig,
+  WeatherData,
+  Warning,
   HomeAssistantExtended,
   TrendData,
   SparklinePoint,
-  TimeOfDay
+  TimeOfDay,
 } from './types';
-import { CARD_VERSION, DEFAULT_CONFIG, ENTITY_KEYWORDS, METRIC_ICONS, CONDITION_ICONS } from './const';
-import { 
-  formatTemperature, 
-  formatSpeed, 
-  formatRain, 
+import {
+  CARD_VERSION,
+  DEFAULT_CONFIG,
+  ENTITY_KEYWORDS,
+  METRIC_ICONS,
+  CONDITION_ICONS,
+} from './const';
+import {
+  formatTemperature,
+  formatSpeed,
+  formatRain,
   getUVLevel,
   formatMetricValue,
   getTimeOfDay,
@@ -23,7 +29,7 @@ import {
   getWeatherDescription,
   calculateTrend,
   getProgressPercentage,
-  isMajorTrend
+  isMajorTrend,
 } from './utils';
 import { checkWarnings } from './warnings';
 import './wind-compass';
@@ -114,7 +120,7 @@ export class WeatherStationCard extends LitElement {
 
   private async fetchHistoryData(): Promise<void> {
     if (!this.hass || !this.config) return;
-    
+
     // Throttle history fetching to once per minute
     const now = Date.now();
     if (now - this.lastHistoryFetch < 60000) return;
@@ -129,35 +135,37 @@ export class WeatherStationCard extends LitElement {
       if (!entityId) continue;
 
       try {
-        const history = await this.hass.callApi<Array<Array<{ state: string; last_changed: string }>>>(
+        const history = await this.hass.callApi<
+          Array<Array<{ state: string; last_changed: string }>>
+        >(
           'GET',
           `history/period/${startTime.toISOString()}?filter_entity_id=${entityId}&end_time=${endTime.toISOString()}&minimal_response`
         );
 
         if (history && history[0]) {
           const points: SparklinePoint[] = history[0]
-            .filter(h => !isNaN(parseFloat(h.state)))
-            .map(h => ({
+            .filter((h) => !isNaN(parseFloat(h.state)))
+            .map((h) => ({
               timestamp: new Date(h.last_changed).getTime(),
-              value: parseFloat(h.state)
+              value: parseFloat(h.state),
             }));
 
           if (points.length > 0) {
             // Sample points if too many (max 50 for sparklines)
             const sampledPoints = this.samplePoints(points, 50);
             this.historyData.set(metric, sampledPoints);
-            
+
             // Calculate trend
             const currentValue = points[points.length - 1].value;
             const trendPeriodHours = this.getTrendPeriodHours();
             const trendStartTime = endTime.getTime() - trendPeriodHours * 60 * 60 * 1000;
-            const trendPoints = points.filter(p => p.timestamp >= trendStartTime);
-            
+            const trendPoints = points.filter((p) => p.timestamp >= trendStartTime);
+
             if (trendPoints.length > 1) {
               const trend = calculateTrend(
-                currentValue, 
-                trendPoints.slice(0, -1), 
-                metric as keyof typeof import('./const').TREND_THRESHOLDS, 
+                currentValue,
+                trendPoints.slice(0, -1),
+                metric as keyof typeof import('./const').TREND_THRESHOLDS,
                 this.config.trend_period || '1h'
               );
               this.trends.set(metric, trend);
@@ -174,33 +182,42 @@ export class WeatherStationCard extends LitElement {
 
   private getHistoryHours(): number {
     switch (this.currentHistoryPeriod) {
-      case 'week': return 168;
-      case 'month': return 720;
-      case 'year': return 8760;
-      default: return 24;
+      case 'week':
+        return 168;
+      case 'month':
+        return 720;
+      case 'year':
+        return 8760;
+      default:
+        return 24;
     }
   }
 
   private getTrendPeriodHours(): number {
     switch (this.config.trend_period) {
-      case '3h': return 3;
-      case '6h': return 6;
-      case '12h': return 12;
-      case '24h': return 24;
-      default: return 1;
+      case '3h':
+        return 3;
+      case '6h':
+        return 6;
+      case '12h':
+        return 12;
+      case '24h':
+        return 24;
+      default:
+        return 1;
     }
   }
 
   private samplePoints(points: SparklinePoint[], maxPoints: number): SparklinePoint[] {
     if (points.length <= maxPoints) return points;
-    
+
     const step = Math.ceil(points.length / maxPoints);
     return points.filter((_, index) => index % step === 0 || index === points.length - 1);
   }
 
   private getEntityIds(): Record<string, string | undefined> {
     const entities: Record<string, string | undefined> = {};
-    
+
     if (this.config.entity_mode === 'manual' && this.config.entities) {
       return this.config.entities as Record<string, string | undefined>;
     }
@@ -217,7 +234,7 @@ export class WeatherStationCard extends LitElement {
 
         if (entityEntry?.device_id === this.config.device_id) {
           const entityName = entityId.split('.')[1].toLowerCase();
-          
+
           for (const [metric, keywords] of Object.entries(ENTITY_KEYWORDS)) {
             for (const keyword of keywords) {
               if (entityName.includes(keyword) && !entities[metric]) {
@@ -391,7 +408,7 @@ export class WeatherStationCard extends LitElement {
   private renderError(): TemplateResult {
     let errorMsg: string;
     let hintMsg: string;
-    
+
     if (this.config.device_id) {
       errorMsg = 'No data available from device';
       hintMsg = 'Please check your configuration and ensure the device exists.';
@@ -433,9 +450,7 @@ export class WeatherStationCard extends LitElement {
     return html`
       <div class="card-header">
         <div class="header-left">
-          ${this.config.name 
-            ? html`<h2 class="card-title">${this.config.name}</h2>` 
-            : ''}
+          ${this.config.name ? html`<h2 class="card-title">${this.config.name}</h2>` : ''}
           ${this.config.show_weather_condition !== false
             ? html`
                 <div class="weather-condition">
@@ -445,9 +460,7 @@ export class WeatherStationCard extends LitElement {
               `
             : ''}
         </div>
-        <div class="header-right">
-          ${this.renderViewToggle()}
-        </div>
+        <div class="header-right">${this.renderViewToggle()}</div>
       </div>
     `;
   }
@@ -507,12 +520,11 @@ export class WeatherStationCard extends LitElement {
 
   private renderHeroMode(weatherData: WeatherData): TemplateResult {
     const trendsObj: Record<string, TrendData> = {};
-    this.trends.forEach((v, k) => trendsObj[k] = v);
-    
-    const heroMetric = this.config.hero_metric === 'auto' 
-      ? selectHeroMetric(weatherData, trendsObj)
-      : 'temperature';
-    
+    this.trends.forEach((v, k) => (trendsObj[k] = v));
+
+    const heroMetric =
+      this.config.hero_metric === 'auto' ? selectHeroMetric(weatherData, trendsObj) : 'temperature';
+
     const heroValue = (weatherData as Record<string, number | undefined>)[heroMetric];
     const heroTrend = this.trends.get(heroMetric);
     const heroHistory = this.historyData.get(heroMetric);
@@ -529,7 +541,10 @@ export class WeatherStationCard extends LitElement {
                 <trend-indicator
                   .trend=${heroTrend}
                   .metric=${heroMetric}
-                  .pulse=${isMajorTrend(heroMetric as keyof typeof import('./const').TREND_THRESHOLDS, heroTrend.absoluteChange)}
+                  .pulse=${isMajorTrend(
+                    heroMetric as keyof typeof import('./const').TREND_THRESHOLDS,
+                    heroTrend.absoluteChange
+                  )}
                 ></trend-indicator>
               `
             : ''}
@@ -545,9 +560,7 @@ export class WeatherStationCard extends LitElement {
               `
             : ''}
         </div>
-        <div class="hero-secondary">
-          ${this.renderSecondaryMetrics(weatherData, heroMetric)}
-        </div>
+        <div class="hero-secondary">${this.renderSecondaryMetrics(weatherData, heroMetric)}</div>
       </div>
     `;
   }
@@ -560,7 +573,7 @@ export class WeatherStationCard extends LitElement {
       { key: 'wind_speed', show: this.config.show_wind },
       { key: 'rain', show: this.config.show_rain },
       { key: 'uv_index', show: this.config.show_uv },
-    ].filter(m => m.show !== false && m.key !== excludeMetric);
+    ].filter((m) => m.show !== false && m.key !== excludeMetric);
 
     return html`
       <div class="secondary-grid">
@@ -629,7 +642,11 @@ export class WeatherStationCard extends LitElement {
           <span class="minimal-icon">${METRIC_ICONS.temperature}</span>
           <span class="minimal-value">${formatTemperature(weatherData.temperature || 0)}</span>
           ${this.trends.get('temperature')
-            ? html`<trend-indicator .trend=${this.trends.get('temperature')} metric="temperature" compact></trend-indicator>`
+            ? html`<trend-indicator
+                .trend=${this.trends.get('temperature')}
+                metric="temperature"
+                compact
+              ></trend-indicator>`
             : ''}
         </div>
         <div class="minimal-secondary">
@@ -645,8 +662,8 @@ export class WeatherStationCard extends LitElement {
   }
 
   private renderMetricCard(
-    metric: string, 
-    value: number, 
+    metric: string,
+    value: number,
     secondaryValue?: number,
     rateValue?: number
   ): TemplateResult {
@@ -656,7 +673,7 @@ export class WeatherStationCard extends LitElement {
     const icon = METRIC_ICONS[metric] || '📊';
 
     return html`
-      <div 
+      <div
         class="metric-card ${isExpanded ? 'expanded' : ''}"
         @click=${() => this.toggleExpanded(metric)}
       >
@@ -664,7 +681,7 @@ export class WeatherStationCard extends LitElement {
           <span class="metric-icon">${icon}</span>
           <span class="metric-label">${this.getMetricLabel(metric)}</span>
         </div>
-        
+
         <div class="metric-body">
           <div class="metric-value-row">
             <span class="metric-value">${formatMetricValue(value, metric)}</span>
@@ -672,11 +689,12 @@ export class WeatherStationCard extends LitElement {
               ? html`<trend-indicator .trend=${trend} .metric=${metric} compact></trend-indicator>`
               : ''}
           </div>
-          
+
           ${secondaryValue !== undefined
-            ? html`<div class="metric-secondary">Feels like ${formatMetricValue(secondaryValue, metric)}</div>`
+            ? html`<div class="metric-secondary">
+                Feels like ${formatMetricValue(secondaryValue, metric)}
+              </div>`
             : ''}
-          
           ${rateValue !== undefined && rateValue > 0
             ? html`<div class="metric-secondary">Rate: ${formatRain(rateValue)}/h</div>`
             : ''}
@@ -696,7 +714,6 @@ export class WeatherStationCard extends LitElement {
               </div>
             `
           : ''}
-
         ${this.config.show_min_max !== false && isExpanded
           ? this.renderMinMax(metric, history)
           : ''}
@@ -706,8 +723,8 @@ export class WeatherStationCard extends LitElement {
 
   private renderMinMax(metric: string, history?: SparklinePoint[]): TemplateResult {
     if (!history || history.length === 0) return html``;
-    
-    const values = history.map(p => p.value);
+
+    const values = history.map((p) => p.value);
     const min = Math.min(...values);
     const max = Math.max(...values);
 
@@ -732,7 +749,12 @@ export class WeatherStationCard extends LitElement {
         <div class="compact-info">
           <span class="compact-value">${formatMetricValue(value, metric)}</span>
           ${trend && this.config.show_trends !== false
-            ? html`<trend-indicator .trend=${trend} .metric=${metric} compact .showValue=${false}></trend-indicator>`
+            ? html`<trend-indicator
+                .trend=${trend}
+                .metric=${metric}
+                compact
+                .showValue=${false}
+              ></trend-indicator>`
             : ''}
         </div>
       </div>
@@ -748,7 +770,7 @@ export class WeatherStationCard extends LitElement {
           <span class="metric-icon">${METRIC_ICONS.wind_speed}</span>
           <span class="metric-label">Wind</span>
         </div>
-        
+
         <div class="wind-content">
           ${this.config.show_wind_arrows !== false
             ? html`
@@ -761,12 +783,16 @@ export class WeatherStationCard extends LitElement {
                 ></wind-compass>
               `
             : ''}
-          
+
           <div class="wind-stats">
             <div class="wind-speed-row">
               <span class="wind-speed-value">${formatSpeed(weatherData.wind_speed || 0)}</span>
               ${trend && this.config.show_trends !== false
-                ? html`<trend-indicator .trend=${trend} metric="wind_speed" compact></trend-indicator>`
+                ? html`<trend-indicator
+                    .trend=${trend}
+                    metric="wind_speed"
+                    compact
+                  ></trend-indicator>`
                 : ''}
             </div>
             ${weatherData.wind_gust
@@ -789,18 +815,23 @@ export class WeatherStationCard extends LitElement {
           <span class="metric-icon">${METRIC_ICONS.uv_index}</span>
           <span class="metric-label">UV Index</span>
         </div>
-        
+
         <div class="metric-body">
           <div class="metric-value-row">
             <span class="metric-value">${uvIndex}</span>
-            <span class="uv-badge" style="background-color: ${uvLevel.color}">${uvLevel.label}</span>
+            <span class="uv-badge" style="background-color: ${uvLevel.color}"
+              >${uvLevel.label}</span
+            >
             ${trend && this.config.show_trends !== false
               ? html`<trend-indicator .trend=${trend} metric="uv_index" compact></trend-indicator>`
               : ''}
           </div>
-          
+
           <div class="progress-bar">
-            <div class="progress-fill" style="width: ${progress}%; background-color: ${uvLevel.color}"></div>
+            <div
+              class="progress-fill"
+              style="width: ${progress}%; background-color: ${uvLevel.color}"
+            ></div>
           </div>
         </div>
       </div>
@@ -824,25 +855,26 @@ export class WeatherStationCard extends LitElement {
             `
           )}
         </div>
-        
+
         <div class="history-content">
-          ${Array.from(this.historyData.entries()).map(([metric, data]) => html`
-            <div class="history-metric">
-              <div class="history-metric-header">
-                <span class="metric-icon">${METRIC_ICONS[metric] || '📊'}</span>
-                <span class="metric-label">${this.getMetricLabel(metric)}</span>
-                ${this.renderMinMax(metric, data)}
+          ${Array.from(this.historyData.entries()).map(
+            ([metric, data]) => html`
+              <div class="history-metric">
+                <div class="history-metric-header">
+                  <span class="metric-icon">${METRIC_ICONS[metric] || '📊'}</span>
+                  <span class="metric-label">${this.getMetricLabel(metric)}</span>
+                  ${this.renderMinMax(metric, data)}
+                </div>
+                <weather-sparkline
+                  .data=${data}
+                  .metric=${metric}
+                  .width=${280}
+                  .height=${50}
+                  .showMinMax=${false}
+                ></weather-sparkline>
               </div>
-              <weather-sparkline
-                .data=${data}
-                .metric=${metric}
-                .width=${280}
-                .height=${50}
-                .showMinMax=${false}
-              ></weather-sparkline>
-            </div>
-          `)}
-          
+            `
+          )}
           ${this.historyData.size === 0
             ? html`
                 <div class="history-empty">
@@ -941,15 +973,23 @@ export class WeatherStationCard extends LitElement {
         transition: background var(--transition-speed);
       }
 
-      .background-layer.day { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-      .background-layer.night { background: linear-gradient(135deg, #0c1445 0%, #1a237e 100%); }
-      .background-layer.dawn { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); }
-      .background-layer.dusk { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+      .background-layer.day {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      }
+      .background-layer.night {
+        background: linear-gradient(135deg, #0c1445 0%, #1a237e 100%);
+      }
+      .background-layer.dawn {
+        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+      }
+      .background-layer.dusk {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+      }
 
       .gradient-overlay {
         position: absolute;
         inset: 0;
-        background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.2) 100%);
+        background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.2) 100%);
       }
 
       /* Header */
@@ -975,8 +1015,12 @@ export class WeatherStationCard extends LitElement {
         opacity: 0.9;
       }
 
-      .condition-icon { font-size: 1.4rem; }
-      .condition-text { font-size: 0.85rem; }
+      .condition-icon {
+        font-size: 1.4rem;
+      }
+      .condition-text {
+        font-size: 0.85rem;
+      }
 
       /* View Toggle */
       .view-toggle {
@@ -999,9 +1043,17 @@ export class WeatherStationCard extends LitElement {
         opacity: 0.7;
       }
 
-      .toggle-btn:hover { opacity: 1; background: rgba(255, 255, 255, 0.15); }
-      .toggle-btn.active { opacity: 1; background: rgba(255, 255, 255, 0.25); }
-      .btn-icon { font-size: 1rem; }
+      .toggle-btn:hover {
+        opacity: 1;
+        background: rgba(255, 255, 255, 0.15);
+      }
+      .toggle-btn.active {
+        opacity: 1;
+        background: rgba(255, 255, 255, 0.25);
+      }
+      .btn-icon {
+        font-size: 1rem;
+      }
 
       /* Warnings */
       .warnings-container {
@@ -1022,21 +1074,42 @@ export class WeatherStationCard extends LitElement {
         animation: slideIn 0.3s ease-out;
       }
 
-      .warning-pill.medium { border-left: 4px solid #ffc107; }
-      .warning-pill.high { border-left: 4px solid #dc3545; animation: pulse 2s infinite; }
+      .warning-pill.medium {
+        border-left: 4px solid #ffc107;
+      }
+      .warning-pill.high {
+        border-left: 4px solid #dc3545;
+        animation: pulse 2s infinite;
+      }
 
       @keyframes slideIn {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
       }
 
       @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.7;
+        }
       }
 
-      .warning-icon { font-size: 1.2rem; }
-      .warning-text { font-size: 0.85rem; flex: 1; }
+      .warning-icon {
+        font-size: 1.2rem;
+      }
+      .warning-text {
+        font-size: 0.85rem;
+        flex: 1;
+      }
 
       /* Metrics Grid */
       .metrics-grid {
@@ -1070,8 +1143,12 @@ export class WeatherStationCard extends LitElement {
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
       }
 
-      .metric-card.expanded { grid-column: span 2; }
-      .metric-card.wind-card { grid-column: span 2; }
+      .metric-card.expanded {
+        grid-column: span 2;
+      }
+      .metric-card.wind-card {
+        grid-column: span 2;
+      }
 
       .metric-header {
         display: flex;
@@ -1080,7 +1157,9 @@ export class WeatherStationCard extends LitElement {
         margin-bottom: 8px;
       }
 
-      .metric-icon { font-size: 1.2rem; }
+      .metric-icon {
+        font-size: 1.2rem;
+      }
 
       .metric-label {
         font-size: 0.7rem;
@@ -1113,7 +1192,9 @@ export class WeatherStationCard extends LitElement {
         opacity: 0.7;
       }
 
-      .metric-sparkline { margin-top: 10px; }
+      .metric-sparkline {
+        margin-top: 10px;
+      }
 
       /* Min/Max */
       .min-max-row {
@@ -1126,8 +1207,12 @@ export class WeatherStationCard extends LitElement {
         opacity: 0.8;
       }
 
-      .min-value { color: #64b5f6; }
-      .max-value { color: #ef5350; }
+      .min-value {
+        color: #64b5f6;
+      }
+      .max-value {
+        color: #ef5350;
+      }
 
       /* Wind Card */
       .wind-content {
@@ -1136,7 +1221,9 @@ export class WeatherStationCard extends LitElement {
         gap: 20px;
       }
 
-      .wind-stats { flex: 1; }
+      .wind-stats {
+        flex: 1;
+      }
 
       .wind-speed-row {
         display: flex;
@@ -1194,7 +1281,9 @@ export class WeatherStationCard extends LitElement {
         background: rgba(0, 0, 0, 0.2);
       }
 
-      .compact-icon { font-size: 1.1rem; }
+      .compact-icon {
+        font-size: 1.1rem;
+      }
 
       .compact-info {
         display: flex;
@@ -1222,7 +1311,9 @@ export class WeatherStationCard extends LitElement {
         gap: 8px;
       }
 
-      .hero-icon { font-size: 2.5rem; }
+      .hero-icon {
+        font-size: 2.5rem;
+      }
 
       .hero-value {
         font-size: 3.5rem;
@@ -1250,7 +1341,9 @@ export class WeatherStationCard extends LitElement {
         gap: 8px;
       }
 
-      .minimal-icon { font-size: 1.4rem; }
+      .minimal-icon {
+        font-size: 1.4rem;
+      }
 
       .minimal-value {
         font-size: 1.8rem;
@@ -1298,8 +1391,15 @@ export class WeatherStationCard extends LitElement {
         opacity: 0.7;
       }
 
-      .period-tab:hover { opacity: 1; background: rgba(255, 255, 255, 0.1); }
-      .period-tab.active { opacity: 1; background: rgba(255, 255, 255, 0.2); font-weight: 600; }
+      .period-tab:hover {
+        opacity: 1;
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .period-tab.active {
+        opacity: 1;
+        background: rgba(255, 255, 255, 0.2);
+        font-weight: 600;
+      }
 
       .history-content {
         display: flex;
@@ -1331,8 +1431,12 @@ export class WeatherStationCard extends LitElement {
         opacity: 0.6;
       }
 
-      .empty-icon { font-size: 2.5rem; }
-      .empty-text { font-size: 0.9rem; }
+      .empty-icon {
+        font-size: 2.5rem;
+      }
+      .empty-text {
+        font-size: 0.9rem;
+      }
 
       /* Error State */
       .error-card {
@@ -1349,24 +1453,55 @@ export class WeatherStationCard extends LitElement {
         gap: 12px;
       }
 
-      .error-icon { font-size: 2.5rem; }
-      .error-message { font-size: 1rem; font-weight: 600; color: var(--error-color, #db4437); }
-      .error-hint { font-size: 0.85rem; color: var(--secondary-text-color, #666); }
+      .error-icon {
+        font-size: 2.5rem;
+      }
+      .error-message {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--error-color, #db4437);
+      }
+      .error-hint {
+        font-size: 0.85rem;
+        color: var(--secondary-text-color, #666);
+      }
 
       /* Responsive */
       @media (max-width: 600px) {
-        .card-inner { padding: 16px; }
-        .metrics-grid.normal { grid-template-columns: 1fr 1fr; }
-        .metric-card.wind-card, .metric-card.expanded { grid-column: span 2; }
-        .wind-content { flex-direction: column; text-align: center; }
-        .hero-value { font-size: 2.8rem; }
-        .card-header { flex-direction: column; gap: 12px; }
-        .view-toggle { align-self: flex-start; }
+        .card-inner {
+          padding: 16px;
+        }
+        .metrics-grid.normal {
+          grid-template-columns: 1fr 1fr;
+        }
+        .metric-card.wind-card,
+        .metric-card.expanded {
+          grid-column: span 2;
+        }
+        .wind-content {
+          flex-direction: column;
+          text-align: center;
+        }
+        .hero-value {
+          font-size: 2.8rem;
+        }
+        .card-header {
+          flex-direction: column;
+          gap: 12px;
+        }
+        .view-toggle {
+          align-self: flex-start;
+        }
       }
 
       @media (max-width: 400px) {
-        .metrics-grid.normal { grid-template-columns: 1fr; }
-        .metric-card.wind-card, .metric-card.expanded { grid-column: span 1; }
+        .metrics-grid.normal {
+          grid-template-columns: 1fr;
+        }
+        .metric-card.wind-card,
+        .metric-card.expanded {
+          grid-column: span 1;
+        }
       }
     `;
   }

@@ -30,8 +30,10 @@ export class TrendIndicator extends LitElement {
     const isUp = this.trend.direction === 'up';
 
     return html`
-      <div 
-        class="trend ${this.trend.direction} ${this.compact ? 'compact' : ''} ${this.pulse ? 'pulse' : ''}"
+      <div
+        class="trend ${this.trend.direction} ${this.compact ? 'compact' : ''} ${this.pulse
+          ? 'pulse'
+          : ''}"
         style="--trend-color: ${color}"
       >
         <span class="arrow">${isUp ? '↑' : '↓'}</span>
@@ -105,7 +107,8 @@ export class TrendIndicator extends LitElement {
       }
 
       @keyframes bounceUp {
-        0%, 100% {
+        0%,
+        100% {
           transform: translateY(0);
         }
         50% {
@@ -114,7 +117,8 @@ export class TrendIndicator extends LitElement {
       }
 
       @keyframes bounceDown {
-        0%, 100% {
+        0%,
+        100% {
           transform: translateY(0);
         }
         50% {
@@ -123,7 +127,8 @@ export class TrendIndicator extends LitElement {
       }
 
       @keyframes pulse {
-        0%, 100% {
+        0%,
+        100% {
           opacity: 1;
           transform: scale(1);
         }

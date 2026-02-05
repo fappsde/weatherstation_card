@@ -25,20 +25,16 @@ export class WeatherSparkline extends LitElement {
       return html`<div class="no-data">—</div>`;
     }
 
-    const { path, min, max, points } = generateSparklinePath(
-      this.data,
-      this.width,
-      this.height,
-      4
-    );
+    const { path, min, max, points } = generateSparklinePath(this.data, this.width, this.height, 4);
 
     const lastPoint = points[points.length - 1];
     const gradientId = `gradient-${Math.random().toString(36).substr(2, 9)}`;
 
     // Create area path for gradient fill
-    const areaPath = points.length > 0
-      ? `${path} L ${points[points.length - 1].x} ${this.height} L ${points[0].x} ${this.height} Z`
-      : '';
+    const areaPath =
+      points.length > 0
+        ? `${path} L ${points[points.length - 1].x} ${this.height} L ${points[0].x} ${this.height} Z`
+        : '';
 
     return html`
       <div class="sparkline-container">

@@ -67,13 +67,13 @@ export type TimeOfDay = 'dawn' | 'day' | 'dusk' | 'night';
 /**
  * Weather condition derived from metrics
  */
-export type WeatherCondition = 
-  | 'sunny' 
-  | 'partly-cloudy' 
-  | 'cloudy' 
-  | 'rainy' 
-  | 'stormy' 
-  | 'windy' 
+export type WeatherCondition =
+  | 'sunny'
+  | 'partly-cloudy'
+  | 'cloudy'
+  | 'rainy'
+  | 'stormy'
+  | 'windy'
   | 'clear-night'
   | 'unknown';
 
@@ -126,18 +126,18 @@ export interface WeatherStationCardConfig extends LovelaceCardConfig {
   show_forecast?: boolean;
   show_min_max?: boolean;
   trend_period?: '1h' | '3h' | '6h' | '12h' | '24h';
-  
+
   // NEW: Hero section settings
   hero_metric?: 'temperature' | 'auto'; // 'auto' picks most significant
   show_weather_condition?: boolean;
-  
+
   // NEW: Theme settings
   color_theme?: 'auto' | 'light' | 'dark' | 'vibrant';
   use_time_based_theme?: boolean;
-  
+
   // NEW: Animation settings
   enable_animations?: boolean;
-  
+
   // NEW: Layout options
   grid_layout?: '2x2' | '3x2' | 'auto';
   card_style?: 'glass' | 'solid' | 'minimal';

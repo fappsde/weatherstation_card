@@ -32,13 +32,9 @@ const ENTITY_MODE_SCHEMA: HaFormSchema[] = [
   },
 ];
 
-const DEVICE_PICKER_SCHEMA: HaFormSchema[] = [
-  { name: 'device_id', selector: { device: {} } },
-];
+const DEVICE_PICKER_SCHEMA: HaFormSchema[] = [{ name: 'device_id', selector: { device: {} } }];
 
-const GENERAL_SETTINGS_SCHEMA: HaFormSchema[] = [
-  { name: 'name', selector: { text: {} } },
-];
+const GENERAL_SETTINGS_SCHEMA: HaFormSchema[] = [{ name: 'name', selector: { text: {} } }];
 
 const DISPLAY_MODE_SCHEMA: HaFormSchema[] = [
   {
@@ -156,9 +152,7 @@ const TREND_FEATURES_SCHEMA: HaFormSchema[] = [
   { name: 'show_weather_condition', selector: { boolean: {} } },
 ];
 
-const ANIMATION_SCHEMA: HaFormSchema[] = [
-  { name: 'enable_animations', selector: { boolean: {} } },
-];
+const ANIMATION_SCHEMA: HaFormSchema[] = [{ name: 'enable_animations', selector: { boolean: {} } }];
 
 const WARNINGS_TOGGLE_SCHEMA: HaFormSchema[] = [
   { name: 'enable_warnings', selector: { boolean: {} } },
@@ -294,14 +288,16 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
 
     return html`
       <div class="tabs">
-        ${tabs.map(tab => html`
-          <button 
-            class="tab ${this._activeTab === tab.id ? 'active' : ''}"
-            @click=${() => this._activeTab = tab.id}
-          >
-            ${tab.label}
-          </button>
-        `)}
+        ${tabs.map(
+          (tab) => html`
+            <button
+              class="tab ${this._activeTab === tab.id ? 'active' : ''}"
+              @click=${() => (this._activeTab = tab.id)}
+            >
+              ${tab.label}
+            </button>
+          `
+        )}
       </div>
     `;
   }
@@ -381,9 +377,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
     return html`
       <div class="section">
         <h3>🖼️ Display Mode</h3>
-        <div class="mode-preview">
-          ${this.renderModePreview()}
-        </div>
+        <div class="mode-preview">${this.renderModePreview()}</div>
         <ha-form
           .hass=${this.hass}
           .data=${data}
@@ -391,7 +385,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
           .computeLabel=${this._computeLabel}
           @value-changed=${this._formValueChanged}
         ></ha-form>
-        
+
         ${this._config.display_mode === 'hero'
           ? html`
               <ha-form
@@ -431,7 +425,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
 
   private renderModePreview(): TemplateResult {
     const mode = this._config.display_mode || 'normal';
-    
+
     const previews: Record<string, TemplateResult> = {
       normal: html`
         <div class="preview-card">
@@ -478,7 +472,10 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
         <h3>📈 Trends & History</h3>
         <div class="info-box">
           <span class="info-icon">📊</span>
-          <span>Trends show how values have changed. Sparklines display mini charts of recent history.</span>
+          <span
+            >Trends show how values have changed. Sparklines display mini charts of recent
+            history.</span
+          >
         </div>
         <ha-form
           .hass=${this.hass}
@@ -487,7 +484,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
           .computeLabel=${this._computeLabel}
           @value-changed=${this._formValueChanged}
         ></ha-form>
-        
+
         ${this._config.show_trends !== false
           ? html`
               <h4>Trend Comparison Period</h4>
@@ -552,13 +549,22 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
     const warningSchemas = {
       wind_speed: [
         { name: 'warnings_wind_speed_enabled', selector: { boolean: {} } },
-        { name: 'warnings_wind_speed_threshold', selector: { number: { min: 0, unit_of_measurement: 'km/h' } } },
+        {
+          name: 'warnings_wind_speed_threshold',
+          selector: { number: { min: 0, unit_of_measurement: 'km/h' } },
+        },
         { name: 'warnings_wind_speed_message', selector: { text: {} } },
       ],
       temperature: [
         { name: 'warnings_temperature_enabled', selector: { boolean: {} } },
-        { name: 'warnings_temperature_high_threshold', selector: { number: { unit_of_measurement: '°C' } } },
-        { name: 'warnings_temperature_low_threshold', selector: { number: { unit_of_measurement: '°C' } } },
+        {
+          name: 'warnings_temperature_high_threshold',
+          selector: { number: { unit_of_measurement: '°C' } },
+        },
+        {
+          name: 'warnings_temperature_low_threshold',
+          selector: { number: { unit_of_measurement: '°C' } },
+        },
         { name: 'warnings_temperature_message_high', selector: { text: {} } },
         { name: 'warnings_temperature_message_low', selector: { text: {} } },
       ],
@@ -569,7 +575,10 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
       ],
       rain_rate: [
         { name: 'warnings_rain_rate_enabled', selector: { boolean: {} } },
-        { name: 'warnings_rain_rate_threshold', selector: { number: { min: 0, unit_of_measurement: 'mm/h' } } },
+        {
+          name: 'warnings_rain_rate_threshold',
+          selector: { number: { min: 0, unit_of_measurement: 'mm/h' } },
+        },
         { name: 'warnings_rain_rate_message', selector: { text: {} } },
       ],
     };
@@ -608,7 +617,8 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
       warnings_rain_rate_message: this._config.warnings?.rain_rate?.message || '',
     };
 
-    const computeWarningLabel = (schema: HaFormSchema): string => warningLabels[schema.name] || schema.name;
+    const computeWarningLabel = (schema: HaFormSchema): string =>
+      warningLabels[schema.name] || schema.name;
 
     return html`
       <div class="warning-settings">
@@ -747,11 +757,11 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
 
     Object.entries(newData).forEach(([key, value]) => {
       const parts = key.replace('warnings_', '').split('_');
-      
+
       // Handle multi-word warning types like "rain_rate" or "wind_speed"
       let warningType: string;
       let property: string;
-      
+
       if (parts[0] === 'rain' && parts[1] === 'rate') {
         warningType = 'rain_rate';
         property = parts.slice(2).join('_');
@@ -821,10 +831,10 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
         <div class="auto-assignments-header">
           <span>🔗 Entity Assignments</span>
           <span class="assignment-count">
-            ${Object.values(autoResolved).filter(v => v).length} found
+            ${Object.values(autoResolved).filter((v) => v).length} found
           </span>
         </div>
-        
+
         ${Object.entries(ENTITY_LABELS).map(([key, label]) => {
           const autoEntity = autoResolved[key];
           const override = (overrides as Record<string, string | undefined>)[key];
@@ -833,7 +843,11 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
           const isNotFound = !effectiveEntity;
 
           return html`
-            <div class="assignment-row ${isNotFound ? 'not-found' : ''} ${isOverridden ? 'overridden' : ''}">
+            <div
+              class="assignment-row ${isNotFound ? 'not-found' : ''} ${isOverridden
+                ? 'overridden'
+                : ''}"
+            >
               <div class="assignment-header">
                 <span class="assignment-label">${label}</span>
                 ${isOverridden

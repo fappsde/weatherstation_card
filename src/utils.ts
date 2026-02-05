@@ -122,7 +122,7 @@ export function isMajorTrend(
  */
 export function getTimeOfDay(date: Date = new Date()): TimeOfDay {
   const hour = date.getHours();
-  
+
   if (hour >= 5 && hour < 8) return 'dawn';
   if (hour >= 8 && hour < 18) return 'day';
   if (hour >= 18 && hour < 21) return 'dusk';
@@ -135,7 +135,7 @@ export function getTimeOfDay(date: Date = new Date()): TimeOfDay {
 export function deriveWeatherCondition(data: WeatherData): WeatherCondition {
   const timeOfDay = getTimeOfDay();
   const isNight = timeOfDay === 'night';
-  
+
   // Check rain first
   if (data.rain_rate !== undefined && data.rain_rate > 0) {
     if (data.wind_speed !== undefined && data.wind_speed > 50) {
@@ -143,18 +143,18 @@ export function deriveWeatherCondition(data: WeatherData): WeatherCondition {
     }
     return 'rainy';
   }
-  
+
   // Check wind
   if (data.wind_speed !== undefined && data.wind_speed > 40) {
     return 'windy';
   }
-  
+
   // Use solar radiation to estimate cloud cover
   if (data.solar_radiation !== undefined) {
     const hour = new Date().getHours();
     const expectedMax = getSolarMaxForHour(hour);
     const ratio = expectedMax > 0 ? data.solar_radiation / expectedMax : 1;
-    
+
     if (ratio > 0.7) {
       return isNight ? 'clear-night' : 'sunny';
     } else if (ratio > 0.3) {
@@ -163,7 +163,7 @@ export function deriveWeatherCondition(data: WeatherData): WeatherCondition {
       return 'cloudy';
     }
   }
-  
+
   // Default based on time
   return isNight ? 'clear-night' : 'sunny';
 }
@@ -181,10 +181,7 @@ function getSolarMaxForHour(hour: number): number {
 /**
  * Calculate progress percentage within a normal range
  */
-export function getProgressPercentage(
-  value: number,
-  metric: keyof typeof NORMAL_RANGES
-): number {
+export function getProgressPercentage(value: number, metric: keyof typeof NORMAL_RANGES): number {
   const range = NORMAL_RANGES[metric];
   const clamped = Math.max(range.min, Math.min(range.max, value));
   return ((clamped - range.min) / (range.max - range.min)) * 100;
@@ -198,7 +195,12 @@ export function generateSparklinePath(
   width: number,
   height: number,
   padding: number = 4
-): { path: string; min: number; max: number; points: Array<{ x: number; y: number; value: number }> } {
+): {
+  path: string;
+  min: number;
+  max: number;
+  points: Array<{ x: number; y: number; value: number }>;
+} {
   if (points.length < 2) {
     return { path: '', min: 0, max: 0, points: [] };
   }
@@ -229,7 +231,7 @@ export function generateSparklinePath(
  */
 export function formatTrendChange(trend: TrendData, metric: string): string {
   const sign = trend.absoluteChange > 0 ? '+' : '';
-  
+
   switch (metric) {
     case 'temperature':
       return `${sign}${trend.absoluteChange}°`;
@@ -254,25 +256,19 @@ export function formatTrendChange(trend: TrendData, metric: string): string {
 export function getTrendColor(direction: TrendData['direction'], metric: string): string {
   // For some metrics, "up" is good, for others it's bad
   const upIsBad = ['uv_index', 'rain_rate', 'wind_speed'];
-  
+
   if (direction === 'stable') {
     return 'var(--secondary-text-color, #666)';
   }
-  
-  const isNegative = upIsBad.includes(metric) 
-    ? direction === 'up' 
-    : direction === 'down';
-  
+
+  const isNegative = upIsBad.includes(metric) ? direction === 'up' : direction === 'down';
+
   if (metric === 'temperature') {
     // Temperature is neutral - use blue for down, red for up
-    return direction === 'up' 
-      ? 'var(--error-color, #f44336)' 
-      : 'var(--info-color, #2196f3)';
+    return direction === 'up' ? 'var(--error-color, #f44336)' : 'var(--info-color, #2196f3)';
   }
-  
-  return isNegative 
-    ? 'var(--error-color, #f44336)' 
-    : 'var(--success-color, #4caf50)';
+
+  return isNegative ? 'var(--error-color, #f44336)' : 'var(--success-color, #4caf50)';
 }
 
 /**
@@ -285,20 +281,24 @@ export function selectHeroMetric(data: WeatherData, trends?: Record<string, Tren
     { metric: 'wind_speed', check: () => (data.wind_speed || 0) > 50 },
     { metric: 'uv_index', check: () => (data.uv_index || 0) >= 8 },
     // Then check for significant trends
-    { 
-      metric: 'temperature', 
-      check: () => trends?.temperature ? isMajorTrend('temperature', trends.temperature.absoluteChange) : false 
+    {
+      metric: 'temperature',
+      check: () =>
+        trends?.temperature
+          ? isMajorTrend('temperature', trends.temperature.absoluteChange)
+          : false,
     },
-    { 
-      metric: 'pressure', 
-      check: () => trends?.pressure ? isMajorTrend('pressure', trends.pressure.absoluteChange) : false 
+    {
+      metric: 'pressure',
+      check: () =>
+        trends?.pressure ? isMajorTrend('pressure', trends.pressure.absoluteChange) : false,
     },
   ];
-  
+
   for (const { metric, check } of priorities) {
     if (check()) return metric;
   }
-  
+
   // Default to temperature
   return 'temperature';
 }
@@ -336,7 +336,7 @@ export function formatMetricValue(value: number, metric: string): string {
  */
 export function getWeatherDescription(data: WeatherData): string {
   const conditions: string[] = [];
-  
+
   if (data.temperature !== undefined) {
     if (data.temperature > 30) conditions.push('Hot');
     else if (data.temperature > 20) conditions.push('Warm');
@@ -344,17 +344,17 @@ export function getWeatherDescription(data: WeatherData): string {
     else if (data.temperature > 0) conditions.push('Cool');
     else conditions.push('Cold');
   }
-  
+
   if (data.rain_rate !== undefined && data.rain_rate > 0) {
     if (data.rain_rate > 10) conditions.push('heavy rain');
     else if (data.rain_rate > 2) conditions.push('rain');
     else conditions.push('light rain');
   }
-  
+
   if (data.wind_speed !== undefined && data.wind_speed > 20) {
     if (data.wind_speed > 50) conditions.push('strong winds');
     else conditions.push('breezy');
   }
-  
+
   return conditions.join(', ') || 'Pleasant conditions';
 }

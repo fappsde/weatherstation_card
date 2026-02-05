@@ -22,12 +22,7 @@ export class WindCompass extends LitElement {
 
     return html`
       <div class="compass-container ${this.compact ? 'compact' : ''}">
-        <svg 
-          width="${size}" 
-          height="${size}" 
-          viewBox="0 0 ${size} ${size}" 
-          class="compass-svg"
-        >
+        <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="compass-svg">
           <!-- Background glow -->
           <defs>
             <radialGradient id="compass-glow" cx="50%" cy="50%" r="50%">
@@ -44,21 +39,16 @@ export class WindCompass extends LitElement {
           </defs>
 
           <!-- Outer circle with gradient -->
-          <circle 
-            cx="${center}" 
-            cy="${center}" 
-            r="${radius}" 
+          <circle
+            cx="${center}"
+            cy="${center}"
+            r="${radius}"
             fill="url(#compass-glow)"
             class="compass-bg"
           />
-          
+
           <!-- Outer ring -->
-          <circle 
-            cx="${center}" 
-            cy="${center}" 
-            r="${radius}" 
-            class="compass-ring"
-          />
+          <circle cx="${center}" cy="${center}" r="${radius}" class="compass-ring" />
 
           <!-- Tick marks -->
           ${this.renderTickMarks(center, radius)}
@@ -106,15 +96,17 @@ export class WindCompass extends LitElement {
 
     return html`
       <g class="tick-marks">
-        ${ticks.map(tick => html`
-          <line
-            x1="${tick.x1}"
-            y1="${tick.y1}"
-            x2="${tick.x2}"
-            y2="${tick.y2}"
-            class="tick ${tick.isCardinal ? 'cardinal' : ''}"
-          />
-        `)}
+        ${ticks.map(
+          (tick) => html`
+            <line
+              x1="${tick.x1}"
+              y1="${tick.y1}"
+              x2="${tick.x2}"
+              y2="${tick.y2}"
+              class="tick ${tick.isCardinal ? 'cardinal' : ''}"
+            />
+          `
+        )}
       </g>
     `;
   }
@@ -166,20 +158,10 @@ export class WindCompass extends LitElement {
     const arrowX2 = endX + arrowSize * Math.cos(arrowAngle2);
     const arrowY2 = endY + arrowSize * Math.sin(arrowAngle2);
 
-    const style = this.animate 
-      ? `transform: rotate(${direction}deg); transform-origin: ${center}px ${center}px;`
-      : '';
-
     if (type === 'current') {
       return html`
         <g class="wind-arrow current" filter="url(#arrow-glow)">
-          <line 
-            x1="${center}" 
-            y1="${center}" 
-            x2="${endX}" 
-            y2="${endY}" 
-            class="arrow-line"
-          />
+          <line x1="${center}" y1="${center}" x2="${endX}" y2="${endY}" class="arrow-line" />
           <polygon
             points="${endX},${endY} ${arrowX1},${arrowY1} ${arrowX2},${arrowY2}"
             class="arrow-head"
@@ -190,13 +172,7 @@ export class WindCompass extends LitElement {
 
     return html`
       <g class="wind-arrow average">
-        <line 
-          x1="${center}" 
-          y1="${center}" 
-          x2="${endX}" 
-          y2="${endY}" 
-          class="arrow-line"
-        />
+        <line x1="${center}" y1="${center}" x2="${endX}" y2="${endY}" class="arrow-line" />
         <polygon
           points="${endX},${endY} ${arrowX1},${arrowY1} ${arrowX2},${arrowY2}"
           class="arrow-head"
@@ -319,7 +295,8 @@ export class WindCompass extends LitElement {
 
       /* Animation for arrow */
       @keyframes pulse {
-        0%, 100% {
+        0%,
+        100% {
           filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.5));
         }
         50% {
@@ -339,4 +316,3 @@ declare global {
     'wind-compass': WindCompass;
   }
 }
-
