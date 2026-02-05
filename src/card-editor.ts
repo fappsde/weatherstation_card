@@ -35,7 +35,6 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
           { value: 'live', label: 'Live Data' },
           { value: 'history', label: 'Historical Data' },
         ])}
-
         ${this._config.data_view === 'history'
           ? this.renderSelect('History Period', 'history_period', [
               { value: 'day', label: 'Day' },
@@ -59,7 +58,6 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
 
         <h3>Warnings</h3>
         ${this.renderSwitch('Enable Warnings', 'enable_warnings')}
-
         ${this._config.enable_warnings ? this.renderWarningSettings() : ''}
       </div>
     `;
@@ -78,12 +76,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
                 'number',
                 false
               )}
-              ${this.renderInput(
-                'Message',
-                'warnings.wind_speed.message',
-                'text',
-                false
-              )}
+              ${this.renderInput('Message', 'warnings.wind_speed.message', 'text', false)}
             `
           : ''}
 
@@ -109,12 +102,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
                 'text',
                 false
               )}
-              ${this.renderInput(
-                'Low Message',
-                'warnings.temperature.message_low',
-                'text',
-                false
-              )}
+              ${this.renderInput('Low Message', 'warnings.temperature.message_low', 'text', false)}
             `
           : ''}
 
@@ -211,18 +199,27 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
     `;
   }
 
-  private getNestedValue(obj: any, path: string): any {
-    return path.split('.').reduce((current, prop) => current?.[prop], obj);
+  private getNestedValue(obj: Record<string, unknown>, path: string): unknown {
+    return path.split('.').reduce((current, prop) => {
+      if (current && typeof current === 'object') {
+        return (current as Record<string, unknown>)[prop];
+      }
+      return undefined;
+    }, obj as unknown);
   }
 
-  private setNestedValue(obj: any, path: string, value: any): any {
+  private setNestedValue(
+    obj: Record<string, unknown>,
+    path: string,
+    value: unknown
+  ): Record<string, unknown> {
     const keys = path.split('.');
     const lastKey = keys.pop()!;
     const target = keys.reduce((current, key) => {
       if (!current[key]) {
         current[key] = {};
       }
-      return current[key];
+      return current[key] as Record<string, unknown>;
     }, obj);
     target[lastKey] = value;
     return obj;
@@ -233,14 +230,18 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
       return;
     }
 
-    const target = ev.target as any;
+    interface ConfigurableInput extends HTMLInputElement {
+      configKey?: string;
+    }
+
+    const target = ev.target as ConfigurableInput;
     const configKey = target.configKey;
 
     if (!configKey) {
       return;
     }
 
-    let value: any;
+    let value: string | number | boolean;
     if (target.type === 'checkbox') {
       value = target.checked;
     } else if (target.type === 'number') {

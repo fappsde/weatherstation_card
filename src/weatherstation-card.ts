@@ -3,13 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant, LovelaceCardEditor } from 'custom-card-helpers';
 import { WeatherStationCardConfig, WeatherData, Warning } from './types';
 import { CARD_VERSION, DEFAULT_CONFIG } from './const';
-import {
-  formatTemperature,
-  formatPressure,
-  formatSpeed,
-  formatRain,
-  getUVLevel,
-} from './utils';
+import { formatTemperature, formatPressure, formatSpeed, formatRain, getUVLevel } from './utils';
 import { checkWarnings } from './warnings';
 import './wind-compass';
 import './card-editor';
@@ -21,8 +15,20 @@ console.info(
 );
 
 // Register the card with Home Assistant
-(window as any).customCards = (window as any).customCards || [];
-(window as any).customCards.push({
+interface CustomCardInfo {
+  type: string;
+  name: string;
+  description: string;
+}
+
+declare global {
+  interface Window {
+    customCards?: CustomCardInfo[];
+  }
+}
+
+window.customCards = window.customCards || [];
+window.customCards.push({
   type: 'weatherstation-card',
   name: 'Weather Station Card',
   description: 'A card for displaying Ecowitt WS90 weather station data',
@@ -128,8 +134,7 @@ export class WeatherStationCard extends LitElement {
 
     return html`
       <ha-card class="${isCompact ? 'compact' : 'normal'}">
-        ${this.renderHeader()}
-        ${this.renderControls()}
+        ${this.renderHeader()} ${this.renderControls()}
         ${warnings.length > 0 ? this.renderWarnings(warnings) : ''}
         <div class="card-content">
           ${this.currentDataView === 'live'
@@ -262,15 +267,13 @@ export class WeatherStationCard extends LitElement {
     `;
   }
 
-  private renderHistoricalData(isCompact: boolean): TemplateResult {
+  private renderHistoricalData(_isCompact: boolean): TemplateResult {
     // For now, display a placeholder. In a real implementation,
     // you would fetch historical data from Home Assistant's history API
     return html`
       <div class="historical-placeholder">
         <div class="placeholder-icon">📊</div>
-        <div class="placeholder-text">
-          Historical data for ${this.currentHistoryPeriod}
-        </div>
+        <div class="placeholder-text">Historical data for ${this.currentHistoryPeriod}</div>
         <div class="placeholder-subtext">
           Connect to Home Assistant history API to display charts
         </div>
@@ -293,9 +296,7 @@ export class WeatherStationCard extends LitElement {
             <div class="data-label">Wind Speed</div>
             <div class="data-value">${formatSpeed(weatherData.wind_speed || 0)}</div>
             ${weatherData.wind_gust
-              ? html`<div class="data-subtitle">
-                  Gust: ${formatSpeed(weatherData.wind_gust)}
-                </div>`
+              ? html`<div class="data-subtitle">Gust: ${formatSpeed(weatherData.wind_gust)}</div>`
               : ''}
           </div>
         </div>
@@ -491,7 +492,9 @@ export class WeatherStationCard extends LitElement {
         padding: 12px;
         background: var(--secondary-background-color, #f5f5f5);
         border-radius: 8px;
-        transition: transform 0.2s, box-shadow 0.2s;
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s;
       }
 
       .data-item:hover {

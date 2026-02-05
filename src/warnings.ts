@@ -1,9 +1,6 @@
 import { Warning, WarningConfig, WeatherData } from './types';
 
-export function checkWarnings(
-  weatherData: WeatherData,
-  warningConfig?: WarningConfig
-): Warning[] {
+export function checkWarnings(weatherData: WeatherData, warningConfig?: WarningConfig): Warning[] {
   if (!warningConfig) {
     return [];
   }
@@ -18,10 +15,10 @@ export function checkWarnings(
   ) {
     warnings.push({
       type: 'wind',
-      severity: weatherData.wind_speed >= warningConfig.wind_speed.threshold * 1.5 ? 'high' : 'medium',
+      severity:
+        weatherData.wind_speed >= warningConfig.wind_speed.threshold * 1.5 ? 'high' : 'medium',
       message:
-        warningConfig.wind_speed.message ||
-        `High wind speed: ${weatherData.wind_speed} km/h`,
+        warningConfig.wind_speed.message || `High wind speed: ${weatherData.wind_speed} km/h`,
       icon: '💨',
     });
   }
@@ -56,8 +53,7 @@ export function checkWarnings(
             ? 'high'
             : 'medium',
         message:
-          warningConfig.temperature.message_low ||
-          `Low temperature: ${weatherData.temperature}°C`,
+          warningConfig.temperature.message_low || `Low temperature: ${weatherData.temperature}°C`,
         icon: '❄️',
       });
     }
@@ -72,8 +68,7 @@ export function checkWarnings(
     warnings.push({
       type: 'uv',
       severity: weatherData.uv_index >= 11 ? 'high' : 'medium',
-      message:
-        warningConfig.uv.message || `High UV index: ${weatherData.uv_index}`,
+      message: warningConfig.uv.message || `High UV index: ${weatherData.uv_index}`,
       icon: '☀️',
     });
   }
@@ -86,11 +81,8 @@ export function checkWarnings(
   ) {
     warnings.push({
       type: 'rain',
-      severity:
-        weatherData.rain_rate >= warningConfig.rain_rate.threshold * 2 ? 'high' : 'medium',
-      message:
-        warningConfig.rain_rate.message ||
-        `Heavy rain: ${weatherData.rain_rate} mm/h`,
+      severity: weatherData.rain_rate >= warningConfig.rain_rate.threshold * 2 ? 'high' : 'medium',
+      message: warningConfig.rain_rate.message || `Heavy rain: ${weatherData.rain_rate} mm/h`,
       icon: '🌧️',
     });
   }
