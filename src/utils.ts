@@ -79,7 +79,7 @@ export function calculateTrend(
   const absoluteChange = currentValue - previousValue;
   const percentChange = previousValue !== 0 ? (absoluteChange / previousValue) * 100 : 0;
 
-  const thresholds = TREND_THRESHOLDS[metric];
+  const thresholds = TREND_THRESHOLDS[metric] || { significant: 0.1, major: 1 };
   let direction: TrendData['direction'] = 'stable';
 
   if (Math.abs(absoluteChange) >= thresholds.significant) {
@@ -102,7 +102,7 @@ export function isSignificantTrend(
   metric: keyof typeof TREND_THRESHOLDS,
   absoluteChange: number
 ): boolean {
-  const thresholds = TREND_THRESHOLDS[metric];
+  const thresholds = TREND_THRESHOLDS[metric] || { significant: 0.1, major: 1 };
   return Math.abs(absoluteChange) >= thresholds.significant;
 }
 
@@ -113,7 +113,7 @@ export function isMajorTrend(
   metric: keyof typeof TREND_THRESHOLDS,
   absoluteChange: number
 ): boolean {
-  const thresholds = TREND_THRESHOLDS[metric];
+  const thresholds = TREND_THRESHOLDS[metric] || { significant: 0.1, major: 1 };
   return Math.abs(absoluteChange) >= thresholds.major;
 }
 

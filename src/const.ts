@@ -185,12 +185,16 @@ export const CONDITION_ICONS: Record<string, string> = {
 
 // Trend thresholds for determining significance
 export const TREND_THRESHOLDS = {
-  temperature: { significant: 2, major: 5 }, // °C change
-  humidity: { significant: 10, major: 20 }, // % change
-  pressure: { significant: 3, major: 8 }, // hPa change
-  wind_speed: { significant: 10, major: 25 }, // km/h change
-  rain: { significant: 1, major: 5 }, // mm change
-  uv_index: { significant: 2, major: 4 }, // UV index change
+  temperature: { significant: 0.3, major: 2 }, // °C change
+  humidity: { significant: 2, major: 10 }, // % change
+  pressure: { significant: 0.5, major: 3 }, // hPa change
+  wind_speed: { significant: 2, major: 10 }, // km/h change
+  wind_gust: { significant: 3, major: 15 }, // km/h change
+  rain: { significant: 0.2, major: 2 }, // mm change
+  rain_rate: { significant: 0.5, major: 5 }, // mm/h change
+  uv_index: { significant: 0.5, major: 2 }, // UV index change
+  solar_radiation: { significant: 50, major: 200 }, // W/m² change
+  dew_point: { significant: 0.5, major: 2 }, // °C change
 };
 
 // Normal ranges for progress bars
