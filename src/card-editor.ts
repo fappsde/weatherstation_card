@@ -2,6 +2,7 @@ import { LitElement, html, css, CSSResultGroup, TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant, fireEvent, LovelaceCardEditor } from 'custom-card-helpers';
 import { WeatherStationCardConfig } from './types';
+import { ENTITY_KEYWORDS, ENTITY_LABELS } from './const';
 
 @customElement('weatherstation-card-editor')
 export class WeatherStationCardEditor extends LitElement implements LovelaceCardEditor {
@@ -220,219 +221,131 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
     `;
   }
 
-  private renderEntityPicker(
-    label: string,
-    configKey: string,
-    domain?: string,
-    required: boolean = false,
-    helperText?: string
-  ): TemplateResult {
-    const value = this.getNestedValue(this._config, configKey) as string;
+  // --- HA Native Pickers ---
 
-    // Get all entities and filter by domain if specified
-    const entities = Object.keys(this.hass.states)
-      .filter((entityId) => {
-        if (!domain) return true;
-        return entityId.startsWith(domain + '.');
-      })
-      .sort();
-
+  private renderDevicePicker(): TemplateResult {
     return html`
-      <div class="input-group">
-        <label>
-          ${label}${required ? '*' : ''}
-          ${helperText ? html`<div class="helper-text">${helperText}</div>` : ''}
-          <select
-            .value=${value || ''}
-            .configKey=${configKey}
-            @change=${this._valueChanged}
-            ?required=${required}
-          >
-            <option value="">-- Select Entity --</option>
-            ${entities.map(
-              (entityId) => html`
-                <option value="${entityId}" ?selected=${value === entityId}>${entityId}</option>
-              `
-            )}
-          </select>
-        </label>
-      </div>
+      <ha-device-picker
+        .hass=${this.hass}
+        .value=${this._config.device_id || ''}
+        .label=${'Weather Station Device'}
+        .configValue=${'device_id'}
+        @value-changed=${this._haValueChanged}
+      ></ha-device-picker>
+      ${this._config.device_id ? this.renderAutoAssignments() : ''}
     `;
   }
 
   private renderManualEntityPickers(): TemplateResult {
     return html`
       <div class="manual-entities">
-        ${this.renderEntityPicker(
-          'Temperature',
-          'entities.temperature',
-          'sensor',
-          false,
-          'Temperature sensor (e.g., sensor.ecowitt_temperature)'
-        )}
-        ${this.renderEntityPicker(
-          'Humidity',
-          'entities.humidity',
-          'sensor',
-          false,
-          'Humidity sensor (e.g., sensor.ecowitt_humidity)'
-        )}
-        ${this.renderEntityPicker(
-          'Pressure',
-          'entities.pressure',
-          'sensor',
-          false,
-          'Pressure sensor (e.g., sensor.ecowitt_pressure)'
-        )}
-        ${this.renderEntityPicker(
-          'Wind Speed',
-          'entities.wind_speed',
-          'sensor',
-          false,
-          'Wind speed sensor'
-        )}
-        ${this.renderEntityPicker(
-          'Wind Direction',
-          'entities.wind_direction',
-          'sensor',
-          false,
-          'Wind direction sensor (bearing in degrees)'
-        )}
-        ${this.renderEntityPicker(
-          'Wind Gust',
-          'entities.wind_gust',
-          'sensor',
-          false,
-          'Wind gust speed sensor (optional)'
-        )}
-        ${this.renderEntityPicker(
-          'Rain',
-          'entities.rain',
-          'sensor',
-          false,
-          'Total rainfall sensor'
-        )}
-        ${this.renderEntityPicker(
-          'Rain Rate',
-          'entities.rain_rate',
-          'sensor',
-          false,
-          'Rainfall rate sensor (optional)'
-        )}
-        ${this.renderEntityPicker(
-          'UV Index',
-          'entities.uv_index',
-          'sensor',
-          false,
-          'UV index sensor'
-        )}
-        ${this.renderEntityPicker(
-          'Solar Radiation',
-          'entities.solar_radiation',
-          'sensor',
-          false,
-          'Solar radiation sensor (optional)'
-        )}
+        ${Object.entries(ENTITY_LABELS).map(([key, label]) => {
+          const value = (this.getNestedValue(this._config, 'entities.' + key) as string) || '';
+          return html`
+            <ha-entity-picker
+              .hass=${this.hass}
+              .value=${value}
+              .label=${label}
+              .includeDomains=${['sensor']}
+              .configValue=${'entities.' + key}
+              @value-changed=${this._haValueChanged}
+              allow-custom-entity
+            ></ha-entity-picker>
+          `;
+        })}
       </div>
     `;
   }
 
-  private renderDevicePicker(): TemplateResult {
-    const deviceId = this._config.device_id;
+  // --- Auto Mode Entity Assignment Display ---
 
-    // Get device registry from hass
-    const devices: Array<{ id: string; name: string }> = [];
+  private resolveAutoEntities(deviceId: string): Record<string, string | undefined> {
+    const deviceEntities: Record<string, string> = {};
 
-    // In Home Assistant, devices are accessed through hass.devices
-    // We need to iterate through entities and find their devices
-    const deviceMap = new Map<string, { name: string; entityCount: number }>();
-
-    Object.values(this.hass.states).forEach((state) => {
+    Object.values(this.hass.states).forEach((state: { entity_id: string }) => {
       const entityId = state.entity_id;
-      // Get device_id from entity registry (if available)
-      const deviceRegistryEntry = Object.values(this.hass.entities || {}).find(
+      const entityEntry = Object.values(this.hass.entities || {}).find(
         (entry: { entity_id?: string }) => entry.entity_id === entityId
       ) as { device_id?: string } | undefined;
 
-      if (deviceRegistryEntry?.device_id) {
-        const devId = deviceRegistryEntry.device_id;
-        if (!deviceMap.has(devId)) {
-          // Get device info
-          const device = (this.hass.devices || {})[devId] as
-            | { name?: string; name_by_user?: string; model?: string }
-            | undefined;
-          if (device) {
-            const deviceName =
-              device.name_by_user || device.name || device.model || `Device ${devId.slice(0, 8)}`;
-            deviceMap.set(devId, { name: deviceName, entityCount: 1 });
+      if (entityEntry?.device_id === deviceId) {
+        const entityName = entityId.split('.')[1].toLowerCase();
+        deviceEntities[entityName] = entityId;
+      }
+    });
+
+    const result: Record<string, string | undefined> = {};
+
+    for (const [measurement, keywords] of Object.entries(ENTITY_KEYWORDS)) {
+      result[measurement] = undefined;
+      for (const keyword of keywords) {
+        let found = false;
+        for (const [name, entityId] of Object.entries(deviceEntities)) {
+          if (name.includes(keyword)) {
+            result[measurement] = entityId;
+            found = true;
+            break;
           }
-        } else {
-          const existing = deviceMap.get(devId)!;
-          deviceMap.set(devId, { ...existing, entityCount: existing.entityCount + 1 });
         }
+        if (found) break;
       }
-    });
-
-    // Convert to array and sort by name
-    deviceMap.forEach((info, id) => {
-      devices.push({ id, name: `${info.name} (${info.entityCount} entities)` });
-    });
-    devices.sort((a, b) => a.name.localeCompare(b.name));
-
-    return html`
-      <div class="input-group">
-        <label>
-          Weather Station Device*
-          <div class="helper-text">Select your Ecowitt weather station or other weather device</div>
-          <select .value=${deviceId || ''} .configKey=${'device_id'} @change=${this._valueChanged}>
-            <option value="">-- Select Device --</option>
-            ${devices.map(
-              (device) => html`
-                <option value="${device.id}" ?selected=${deviceId === device.id}>
-                  ${device.name}
-                </option>
-              `
-            )}
-          </select>
-        </label>
-      </div>
-      ${deviceId ? this.renderDeviceInfo(deviceId) : ''}
-    `;
-  }
-
-  private renderDeviceInfo(deviceId: string): TemplateResult {
-    // Find entities belonging to this device
-    const deviceEntities: string[] = [];
-
-    Object.values(this.hass.states).forEach((state) => {
-      const entityId = state.entity_id;
-      const entityRegistryEntry = Object.values(this.hass.entities || {}).find(
-        (entry: { entity_id?: string }) => entry.entity_id === entityId
-      ) as { device_id?: string } | undefined;
-
-      if (entityRegistryEntry?.device_id === deviceId) {
-        deviceEntities.push(entityId);
-      }
-    });
-
-    if (deviceEntities.length === 0) {
-      return html``;
     }
 
+    return result;
+  }
+
+  private renderAutoAssignments(): TemplateResult {
+    if (!this._config.device_id) return html``;
+
+    const autoResolved = this.resolveAutoEntities(this._config.device_id);
+    const overrides = this._config.entities || {};
+
     return html`
-      <div class="device-info">
-        <div class="device-info-header">Device Entities (${deviceEntities.length}):</div>
-        <div class="device-entities">
-          ${deviceEntities
-            .slice(0, 10)
-            .map((entityId) => html` <div class="device-entity">${entityId}</div> `)}
-          ${deviceEntities.length > 10
-            ? html`<div class="device-entity-more">...and ${deviceEntities.length - 10} more</div>`
-            : ''}
+      <div class="auto-assignments">
+        <div class="auto-assignments-header">Entity Assignments</div>
+        <div class="auto-assignments-desc">
+          Automatically detected entities for each measurement. Override any assignment by selecting
+          a different entity.
         </div>
+        ${Object.entries(ENTITY_LABELS).map(([key, label]) => {
+          const autoEntity = autoResolved[key];
+          const override = (overrides as Record<string, string | undefined>)[key];
+          const effectiveEntity = override || autoEntity || '';
+          const isOverridden = !!override;
+          const isNotFound = !effectiveEntity;
+
+          return html`
+            <div class="assignment-row">
+              <div class="assignment-header">
+                <span class="assignment-label">${label}</span>
+                ${isOverridden
+                  ? html`<span class="assignment-badge override">Override</span>`
+                  : isNotFound
+                    ? html`<span class="assignment-badge not-found">Not found</span>`
+                    : html`<span class="assignment-badge auto">Auto</span>`}
+              </div>
+              <ha-entity-picker
+                .hass=${this.hass}
+                .value=${effectiveEntity}
+                .label=${'Entity for ' + label}
+                .includeDomains=${['sensor']}
+                .configValue=${'entities.' + key}
+                @value-changed=${this._haValueChanged}
+                allow-custom-entity
+              ></ha-entity-picker>
+              ${isOverridden
+                ? html`<button class="reset-btn" @click=${() => this._clearOverride(key)}>
+                    Reset to auto
+                  </button>`
+                : ''}
+            </div>
+          `;
+        })}
       </div>
     `;
   }
+
+  // --- Value Change Handlers ---
 
   private getNestedValue(obj: Record<string, unknown>, path: string): unknown {
     return path.split('.').reduce((current, prop) => {
@@ -460,6 +373,9 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
     return obj;
   }
 
+  /**
+   * Handler for native form elements (input, select, checkbox).
+   */
   private _valueChanged(ev: Event): void {
     if (!this._config || !this.hass) {
       return;
@@ -491,6 +407,59 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
     const newConfig = { ...this._config };
     this.setNestedValue(newConfig, configKey, value);
 
+    this._config = newConfig;
+    fireEvent(this, 'config-changed', { config: this._config });
+  }
+
+  /**
+   * Handler for HA custom elements (ha-entity-picker, ha-device-picker).
+   * These fire 'value-changed' CustomEvents with ev.detail.value.
+   */
+  private _haValueChanged(ev: CustomEvent): void {
+    ev.stopPropagation();
+    if (!this._config || !this.hass) return;
+
+    const target = ev.target as HTMLElement & { configValue?: string };
+    const configValue = target.configValue;
+    if (!configValue) return;
+
+    const value = ev.detail.value;
+    const newConfig = { ...this._config };
+
+    // In auto mode, clearing an entity picker removes the override
+    if (!value && configValue.startsWith('entities.') && this._config.entity_mode !== 'manual') {
+      const key = configValue.split('.').pop()!;
+      if (newConfig.entities) {
+        const newEntities = { ...newConfig.entities };
+        delete (newEntities as Record<string, unknown>)[key];
+        if (Object.keys(newEntities).length === 0) {
+          delete newConfig.entities;
+        } else {
+          newConfig.entities = newEntities;
+        }
+      }
+    } else {
+      this.setNestedValue(newConfig, configValue, value || '');
+    }
+
+    this._config = newConfig;
+    fireEvent(this, 'config-changed', { config: this._config });
+  }
+
+  /**
+   * Clear an entity override in auto mode, resetting to auto-detection.
+   */
+  private _clearOverride(key: string): void {
+    const newConfig = { ...this._config };
+    if (newConfig.entities) {
+      const newEntities = { ...newConfig.entities };
+      delete (newEntities as Record<string, unknown>)[key];
+      if (Object.keys(newEntities).length === 0) {
+        delete newConfig.entities;
+      } else {
+        newConfig.entities = newEntities;
+      }
+    }
     this._config = newConfig;
     fireEvent(this, 'config-changed', { config: this._config });
   }
@@ -592,41 +561,90 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
         margin-top: 8px;
       }
 
-      .device-info {
-        margin-top: 16px;
-        padding: 12px;
-        background: var(--secondary-background-color, #f5f5f5);
-        border-radius: 4px;
-        border-left: 3px solid var(--success-color, #4caf50);
+      /* HA picker spacing */
+      ha-device-picker,
+      ha-entity-picker {
+        display: block;
       }
 
-      .device-info-header {
-        font-size: 14px;
+      /* Auto-assignment section */
+      .auto-assignments {
+        margin-top: 16px;
+      }
+
+      .auto-assignments-header {
+        font-size: 16px;
         font-weight: 600;
         color: var(--primary-text-color);
+        margin-bottom: 4px;
+      }
+
+      .auto-assignments-desc {
+        font-size: 13px;
+        color: var(--secondary-text-color, #666);
+        margin-bottom: 16px;
+      }
+
+      .assignment-row {
+        margin-bottom: 12px;
+        padding: 12px;
+        background: var(--secondary-background-color, #f5f5f5);
+        border-radius: 8px;
+      }
+
+      .assignment-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         margin-bottom: 8px;
       }
 
-      .device-entities {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
+      .assignment-label {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--primary-text-color);
       }
 
-      .device-entity {
-        font-size: 12px;
-        font-family: monospace;
-        color: var(--secondary-text-color);
-        padding: 2px 4px;
-        background: var(--card-background-color);
-        border-radius: 2px;
+      .assignment-badge {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
       }
 
-      .device-entity-more {
+      .assignment-badge.auto {
+        background: var(--success-color, #4caf50);
+        color: white;
+      }
+
+      .assignment-badge.override {
+        background: var(--warning-color, #ff9800);
+        color: white;
+      }
+
+      .assignment-badge.not-found {
+        background: var(--error-color, #f44336);
+        color: white;
+      }
+
+      .reset-btn {
+        display: inline-block;
+        margin-top: 6px;
+        padding: 4px 12px;
         font-size: 12px;
-        color: var(--secondary-text-color);
-        font-style: italic;
-        margin-top: 4px;
+        color: var(--primary-color, #03a9f4);
+        background: none;
+        border: 1px solid var(--primary-color, #03a9f4);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .reset-btn:hover {
+        background: var(--primary-color, #03a9f4);
+        color: white;
       }
     `;
   }
