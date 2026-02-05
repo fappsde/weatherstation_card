@@ -17,19 +17,9 @@ export class WindCompass extends LitElement {
 
     return html`
       <div class="compass-container">
-        <svg
-          width="${size}"
-          height="${size}"
-          viewBox="0 0 ${size} ${size}"
-          class="compass-svg"
-        >
+        <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="compass-svg">
           <!-- Outer circle -->
-          <circle
-            cx="${center}"
-            cy="${center}"
-            r="${radius}"
-            class="compass-circle"
-          />
+          <circle cx="${center}" cy="${center}" r="${radius}" class="compass-circle" />
 
           <!-- Cardinal directions -->
           ${this.renderCardinalMarks(center, radius)}
@@ -39,12 +29,7 @@ export class WindCompass extends LitElement {
 
           <!-- Average wind direction arrow (if available) -->
           ${this.showArrows && this.windDirectionAvg !== undefined
-            ? this.renderWindArrow(
-                center,
-                radius * 0.85,
-                this.windDirectionAvg,
-                'average'
-              )
+            ? this.renderWindArrow(center, radius * 0.85, this.windDirectionAvg, 'average')
             : ''}
 
           <!-- Center dot -->
@@ -106,13 +91,7 @@ export class WindCompass extends LitElement {
 
     return html`
       <g class="wind-arrow ${type}">
-        <line
-          x1="${center}"
-          y1="${center}"
-          x2="${endX}"
-          y2="${endY}"
-          class="arrow-line"
-        />
+        <line x1="${center}" y1="${center}" x2="${endX}" y2="${endY}" class="arrow-line" />
         <polygon
           points="${endX},${endY} ${arrowX1},${arrowY1} ${arrowX2},${arrowY2}"
           class="arrow-head"
