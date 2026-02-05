@@ -3,8 +3,8 @@ node_modules/
 yarn.lock
 pnpm-lock.yaml
 
-# Build outputs
-dist/
+# Build outputs - keep dist/ for HACS but ignore source maps
+# dist/
 *.js.map
 
 # IDE
