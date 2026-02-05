@@ -1,0 +1,15 @@
+# Code owners for weatherstation_card
+
+# Default owners for everything in the repo
+* @fappsde
+
+# GitHub Actions workflows
+/.github/workflows/ @fappsde
+
+# Documentation
+*.md @fappsde
+
+# Configuration files
+*.json @fappsde
+*.yml @fappsde
+*.yaml @fappsde
