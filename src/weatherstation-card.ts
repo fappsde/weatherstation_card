@@ -1,17 +1,40 @@
 import { LitElement, html, css, CSSResultGroup, TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant, LovelaceCardEditor } from 'custom-card-helpers';
-import { WeatherStationCardConfig, WeatherData, Warning, HomeAssistantExtended } from './types';
-import { CARD_VERSION, DEFAULT_CONFIG, ENTITY_KEYWORDS } from './const';
-import { formatTemperature, formatPressure, formatSpeed, formatRain, getUVLevel } from './utils';
+import { 
+  WeatherStationCardConfig, 
+  WeatherData, 
+  Warning, 
+  HomeAssistantExtended,
+  TrendData,
+  SparklinePoint,
+  TimeOfDay
+} from './types';
+import { CARD_VERSION, DEFAULT_CONFIG, ENTITY_KEYWORDS, METRIC_ICONS, CONDITION_ICONS } from './const';
+import { 
+  formatTemperature, 
+  formatSpeed, 
+  formatRain, 
+  getUVLevel,
+  formatMetricValue,
+  getTimeOfDay,
+  deriveWeatherCondition,
+  selectHeroMetric,
+  getWeatherDescription,
+  calculateTrend,
+  getProgressPercentage,
+  isMajorTrend
+} from './utils';
 import { checkWarnings } from './warnings';
 import './wind-compass';
 import './card-editor';
+import './sparkline';
+import './trend-indicator';
 
 console.info(
   `%c WEATHERSTATION-CARD %c ${CARD_VERSION} `,
-  'color: white; background: #1976d2; font-weight: 700;',
-  'color: #1976d2; background: white; font-weight: 700;'
+  'color: white; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-weight: 700; padding: 4px 8px; border-radius: 4px;',
+  'color: #764ba2; background: white; font-weight: 700; padding: 4px 8px; border-radius: 4px;'
 );
 
 // Register the card with Home Assistant
@@ -31,7 +54,7 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'weatherstation-card',
   name: 'Weather Station Card',
-  description: 'A card for displaying Ecowitt WS90 weather station data',
+  description: 'A modern, sleek card for displaying weather station data with trends and history',
 });
 
 @customElement('weatherstation-card')
@@ -40,6 +63,10 @@ export class WeatherStationCard extends LitElement {
   @state() private config!: WeatherStationCardConfig;
   @state() private currentDataView: 'live' | 'history' = 'live';
   @state() private currentHistoryPeriod: 'day' | 'week' | 'month' | 'year' = 'day';
+  @state() private expandedMetric: string | null = null;
+  @state() private historyData: Map<string, SparklinePoint[]> = new Map();
+  @state() private trends: Map<string, TrendData> = new Map();
+  @state() private lastHistoryFetch: number = 0;
 
   public static getConfigElement(): LovelaceCardEditor {
     return document.createElement('weatherstation-card-editor') as LovelaceCardEditor;
@@ -69,38 +96,163 @@ export class WeatherStationCard extends LitElement {
   }
 
   public getCardSize(): number {
-    return this.config.display_mode === 'compact' ? 3 : 5;
+    switch (this.config.display_mode) {
+      case 'compact':
+      case 'minimal':
+        return 2;
+      case 'hero':
+        return 4;
+      default:
+        return 5;
+    }
+  }
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    this.fetchHistoryData();
+  }
+
+  private async fetchHistoryData(): Promise<void> {
+    if (!this.hass || !this.config) return;
+    
+    // Throttle history fetching to once per minute
+    const now = Date.now();
+    if (now - this.lastHistoryFetch < 60000) return;
+    this.lastHistoryFetch = now;
+
+    const entities = this.getEntityIds();
+    const endTime = new Date();
+    const hours = this.getHistoryHours();
+    const startTime = new Date(endTime.getTime() - hours * 60 * 60 * 1000);
+
+    for (const [metric, entityId] of Object.entries(entities)) {
+      if (!entityId) continue;
+
+      try {
+        const history = await this.hass.callApi<Array<Array<{ state: string; last_changed: string }>>>(
+          'GET',
+          `history/period/${startTime.toISOString()}?filter_entity_id=${entityId}&end_time=${endTime.toISOString()}&minimal_response`
+        );
+
+        if (history && history[0]) {
+          const points: SparklinePoint[] = history[0]
+            .filter(h => !isNaN(parseFloat(h.state)))
+            .map(h => ({
+              timestamp: new Date(h.last_changed).getTime(),
+              value: parseFloat(h.state)
+            }));
+
+          if (points.length > 0) {
+            // Sample points if too many (max 50 for sparklines)
+            const sampledPoints = this.samplePoints(points, 50);
+            this.historyData.set(metric, sampledPoints);
+            
+            // Calculate trend
+            const currentValue = points[points.length - 1].value;
+            const trendPeriodHours = this.getTrendPeriodHours();
+            const trendStartTime = endTime.getTime() - trendPeriodHours * 60 * 60 * 1000;
+            const trendPoints = points.filter(p => p.timestamp >= trendStartTime);
+            
+            if (trendPoints.length > 1) {
+              const trend = calculateTrend(
+                currentValue, 
+                trendPoints.slice(0, -1), 
+                metric as keyof typeof import('./const').TREND_THRESHOLDS, 
+                this.config.trend_period || '1h'
+              );
+              this.trends.set(metric, trend);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn(`Failed to fetch history for ${entityId}:`, e);
+      }
+    }
+
+    this.requestUpdate();
+  }
+
+  private getHistoryHours(): number {
+    switch (this.currentHistoryPeriod) {
+      case 'week': return 168;
+      case 'month': return 720;
+      case 'year': return 8760;
+      default: return 24;
+    }
+  }
+
+  private getTrendPeriodHours(): number {
+    switch (this.config.trend_period) {
+      case '3h': return 3;
+      case '6h': return 6;
+      case '12h': return 12;
+      case '24h': return 24;
+      default: return 1;
+    }
+  }
+
+  private samplePoints(points: SparklinePoint[], maxPoints: number): SparklinePoint[] {
+    if (points.length <= maxPoints) return points;
+    
+    const step = Math.ceil(points.length / maxPoints);
+    return points.filter((_, index) => index % step === 0 || index === points.length - 1);
+  }
+
+  private getEntityIds(): Record<string, string | undefined> {
+    const entities: Record<string, string | undefined> = {};
+    
+    if (this.config.entity_mode === 'manual' && this.config.entities) {
+      return this.config.entities as Record<string, string | undefined>;
+    }
+
+    if (this.config.device_id) {
+      const hass = this.hass as HomeAssistantExtended;
+      const entityRegistry = hass.entities || {};
+
+      Object.values(this.hass.states).forEach((state) => {
+        const entityId = state.entity_id;
+        const entityEntry = Object.values(entityRegistry).find(
+          (entry) => entry.entity_id === entityId
+        );
+
+        if (entityEntry?.device_id === this.config.device_id) {
+          const entityName = entityId.split('.')[1].toLowerCase();
+          
+          for (const [metric, keywords] of Object.entries(ENTITY_KEYWORDS)) {
+            for (const keyword of keywords) {
+              if (entityName.includes(keyword) && !entities[metric]) {
+                entities[metric] = entityId;
+                break;
+              }
+            }
+          }
+        }
+      });
+    }
+
+    return entities;
   }
 
   private getWeatherData(): WeatherData | null {
-    if (!this.hass) {
-      return null;
-    }
+    if (!this.hass) return null;
 
     const entityMode = this.config.entity_mode || 'auto';
 
     if (entityMode === 'manual' && this.config.entities) {
-      // Manual mode: read from individual entities
       return this.getDataFromIndividualEntities();
     }
 
-    // Auto mode: use device or weather entity
     if (this.config.device_id) {
       return this.getDataFromDevice();
     }
 
-    // Fallback to weather entity (backwards compatibility)
     return this.getDataFromWeatherEntity();
   }
 
   private getDataFromDevice(): WeatherData | null {
-    if (!this.config.device_id) {
-      return null;
-    }
+    if (!this.config.device_id) return null;
 
-    // Find all entities belonging to this device
     const deviceEntities: Record<string, string> = {};
-
     const hass = this.hass as HomeAssistantExtended;
     const entityRegistry = hass.entities || {};
 
@@ -119,7 +271,6 @@ export class WeatherStationCard extends LitElement {
     const overrides = this.config.entities || {};
 
     const getEntityValue = (keywords: string[], overrideEntityId?: string): number | undefined => {
-      // Check override first
       if (overrideEntityId) {
         const entity = this.hass.states[overrideEntityId];
         if (entity) {
@@ -128,7 +279,6 @@ export class WeatherStationCard extends LitElement {
         }
       }
 
-      // Fall back to keyword matching
       for (const keyword of keywords) {
         for (const [name, entityId] of Object.entries(deviceEntities)) {
           if (name.includes(keyword)) {
@@ -158,14 +308,10 @@ export class WeatherStationCard extends LitElement {
   }
 
   private getDataFromWeatherEntity(): WeatherData | null {
-    if (!this.config.entity) {
-      return null;
-    }
+    if (!this.config.entity) return null;
 
     const entity = this.hass.states[this.config.entity];
-    if (!entity) {
-      return null;
-    }
+    if (!entity) return null;
 
     return {
       temperature: entity.attributes.temperature,
@@ -186,9 +332,7 @@ export class WeatherStationCard extends LitElement {
   }
 
   private getDataFromIndividualEntities(): WeatherData | null {
-    if (!this.config.entities) {
-      return null;
-    }
+    if (!this.config.entities) return null;
 
     const getEntityValue = (entityId?: string): number | undefined => {
       if (!entityId) return undefined;
@@ -213,121 +357,130 @@ export class WeatherStationCard extends LitElement {
   }
 
   private getWarnings(): Warning[] {
-    if (!this.config.enable_warnings) {
-      return [];
-    }
+    if (!this.config.enable_warnings) return [];
 
     const weatherData = this.getWeatherData();
-    if (!weatherData) {
-      return [];
-    }
+    if (!weatherData) return [];
 
     return checkWarnings(weatherData, this.config.warnings);
   }
 
   protected render(): TemplateResult {
-    if (!this.hass || !this.config) {
-      return html``;
-    }
+    if (!this.hass || !this.config) return html``;
 
     const weatherData = this.getWeatherData();
-    if (!weatherData) {
-      let errorMsg: string;
-      let hintMsg: string;
-      if (this.config.device_id) {
-        errorMsg = 'No data available from device';
-        hintMsg = 'Please check your configuration and ensure the device exists.';
-      } else if (this.config.entity) {
-        errorMsg = `Entity not available: ${this.config.entity}`;
-        hintMsg = 'Please check your configuration and ensure the entity exists.';
-      } else {
-        errorMsg = 'No device or entity configured';
-        hintMsg = 'Open the card editor and select a device or entity.';
-      }
-
-      return html`
-        <ha-card>
-          <div class="card-content">
-            <div class="error">${errorMsg}</div>
-            <div class="error-hint">${hintMsg}</div>
-          </div>
-        </ha-card>
-      `;
-    }
+    if (!weatherData) return this.renderError();
 
     const warnings = this.getWarnings();
-    const isCompact = this.config.display_mode === 'compact';
+    const timeOfDay = getTimeOfDay();
+    const condition = deriveWeatherCondition(weatherData);
+    const cardStyle = this.config.card_style || 'glass';
 
     return html`
-      <ha-card class="${isCompact ? 'compact' : 'normal'}">
-        ${this.renderHeader()} ${this.renderControls()}
-        ${warnings.length > 0 ? this.renderWarnings(warnings) : ''}
-        <div class="card-content">
-          ${this.currentDataView === 'live'
-            ? this.renderLiveData(weatherData, isCompact)
-            : this.renderHistoricalData(isCompact)}
+      <ha-card class="weather-card ${this.config.display_mode} ${cardStyle} ${timeOfDay}">
+        ${this.renderBackground(timeOfDay, condition)}
+        <div class="card-inner">
+          ${this.renderHeader(weatherData, condition)}
+          ${warnings.length > 0 ? this.renderWarnings(warnings) : ''}
+          ${this.renderContent(weatherData)}
         </div>
       </ha-card>
     `;
   }
 
-  private renderHeader(): TemplateResult {
-    if (!this.config.name) {
+  private renderError(): TemplateResult {
+    let errorMsg: string;
+    let hintMsg: string;
+    
+    if (this.config.device_id) {
+      errorMsg = 'No data available from device';
+      hintMsg = 'Please check your configuration and ensure the device exists.';
+    } else if (this.config.entity) {
+      errorMsg = `Entity not available: ${this.config.entity}`;
+      hintMsg = 'Please check your configuration and ensure the entity exists.';
+    } else {
+      errorMsg = 'No device or entity configured';
+      hintMsg = 'Open the card editor and select a device or entity.';
+    }
+
+    return html`
+      <ha-card class="weather-card error-card">
+        <div class="error-content">
+          <div class="error-icon">⚠️</div>
+          <div class="error-message">${errorMsg}</div>
+          <div class="error-hint">${hintMsg}</div>
+        </div>
+      </ha-card>
+    `;
+  }
+
+  private renderBackground(timeOfDay: TimeOfDay, condition: string): TemplateResult {
+    if (this.config.card_style === 'minimal' || this.config.card_style === 'solid') {
       return html``;
     }
 
-    return html`<div class="card-header">${this.config.name}</div>`;
-  }
-
-  private renderControls(): TemplateResult {
     return html`
-      <div class="controls">
-        <div class="view-selector">
-          <button
-            class="control-btn ${this.currentDataView === 'live' ? 'active' : ''}"
-            @click=${() => this.setDataView('live')}
-          >
-            Live
-          </button>
-          <button
-            class="control-btn ${this.currentDataView === 'history' ? 'active' : ''}"
-            @click=${() => this.setDataView('history')}
-          >
-            History
-          </button>
-        </div>
-        ${this.currentDataView === 'history' ? this.renderPeriodSelector() : ''}
+      <div class="background-layer ${timeOfDay} ${condition}">
+        <div class="gradient-overlay"></div>
       </div>
     `;
   }
 
-  private renderPeriodSelector(): TemplateResult {
-    const periods: Array<'day' | 'week' | 'month' | 'year'> = ['day', 'week', 'month', 'year'];
+  private renderHeader(weatherData: WeatherData, condition: string): TemplateResult {
+    const conditionIcon = CONDITION_ICONS[condition] || '🌤️';
+    const description = getWeatherDescription(weatherData);
 
     return html`
-      <div class="period-selector">
-        ${periods.map(
-          (period) => html`
-            <button
-              class="control-btn ${this.currentHistoryPeriod === period ? 'active' : ''}"
-              @click=${() => this.setHistoryPeriod(period)}
-            >
-              ${period.charAt(0).toUpperCase() + period.slice(1)}
-            </button>
-          `
-        )}
+      <div class="card-header">
+        <div class="header-left">
+          ${this.config.name 
+            ? html`<h2 class="card-title">${this.config.name}</h2>` 
+            : ''}
+          ${this.config.show_weather_condition !== false
+            ? html`
+                <div class="weather-condition">
+                  <span class="condition-icon">${conditionIcon}</span>
+                  <span class="condition-text">${description}</span>
+                </div>
+              `
+            : ''}
+        </div>
+        <div class="header-right">
+          ${this.renderViewToggle()}
+        </div>
+      </div>
+    `;
+  }
+
+  private renderViewToggle(): TemplateResult {
+    return html`
+      <div class="view-toggle">
+        <button
+          class="toggle-btn ${this.currentDataView === 'live' ? 'active' : ''}"
+          @click=${() => this.setDataView('live')}
+          title="Live Data"
+        >
+          <span class="btn-icon">⚡</span>
+        </button>
+        <button
+          class="toggle-btn ${this.currentDataView === 'history' ? 'active' : ''}"
+          @click=${() => this.setDataView('history')}
+          title="History"
+        >
+          <span class="btn-icon">📊</span>
+        </button>
       </div>
     `;
   }
 
   private renderWarnings(warnings: Warning[]): TemplateResult {
     return html`
-      <div class="warnings">
+      <div class="warnings-container">
         ${warnings.map(
           (warning) => html`
-            <div class="warning ${warning.severity}">
+            <div class="warning-pill ${warning.severity}">
               <span class="warning-icon">${warning.icon}</span>
-              <span class="warning-message">${warning.message}</span>
+              <span class="warning-text">${warning.message}</span>
             </div>
           `
         )}
@@ -335,422 +488,885 @@ export class WeatherStationCard extends LitElement {
     `;
   }
 
-  private renderLiveData(weatherData: WeatherData, isCompact: boolean): TemplateResult {
-    const gridClass = isCompact ? 'weather-grid compact' : 'weather-grid';
+  private renderContent(weatherData: WeatherData): TemplateResult {
+    if (this.currentDataView === 'history') {
+      return this.renderHistoryView();
+    }
 
-    return html`
-      <div class="${gridClass}">
-        ${this.config.show_temperature && weatherData.temperature !== undefined
-          ? this.renderDataItem(
-              '🌡️',
-              'Temperature',
-              formatTemperature(weatherData.temperature),
-              weatherData.feels_like
-                ? `Feels like ${formatTemperature(weatherData.feels_like)}`
-                : undefined,
-              isCompact
-            )
-          : ''}
-        ${this.config.show_humidity && weatherData.humidity !== undefined
-          ? this.renderDataItem('💧', 'Humidity', `${weatherData.humidity}%`, undefined, isCompact)
-          : ''}
-        ${this.config.show_pressure && weatherData.pressure !== undefined
-          ? this.renderDataItem(
-              '🔽',
-              'Pressure',
-              formatPressure(weatherData.pressure),
-              undefined,
-              isCompact
-            )
-          : ''}
-        ${this.config.show_wind &&
-        weatherData.wind_speed !== undefined &&
-        weatherData.wind_direction !== undefined
-          ? this.renderWindItem(weatherData, isCompact)
-          : ''}
-        ${this.config.show_rain && weatherData.rain !== undefined
-          ? this.renderDataItem(
-              '🌧️',
-              'Rain',
-              formatRain(weatherData.rain),
-              weatherData.rain_rate ? `Rate: ${formatRain(weatherData.rain_rate)}/h` : undefined,
-              isCompact
-            )
-          : ''}
-        ${this.config.show_uv && weatherData.uv_index !== undefined
-          ? this.renderUVItem(weatherData.uv_index, isCompact)
-          : ''}
-        ${this.config.show_solar && weatherData.solar_radiation !== undefined
-          ? this.renderDataItem(
-              '☀️',
-              'Solar',
-              `${weatherData.solar_radiation} W/m²`,
-              undefined,
-              isCompact
-            )
-          : ''}
-      </div>
-    `;
+    switch (this.config.display_mode) {
+      case 'hero':
+        return this.renderHeroMode(weatherData);
+      case 'compact':
+        return this.renderCompactMode(weatherData);
+      case 'minimal':
+        return this.renderMinimalMode(weatherData);
+      default:
+        return this.renderNormalMode(weatherData);
+    }
   }
 
-  private renderHistoricalData(_isCompact: boolean): TemplateResult {
-    // For now, display a placeholder. In a real implementation,
-    // you would fetch historical data from Home Assistant's history API
+  private renderHeroMode(weatherData: WeatherData): TemplateResult {
+    const trendsObj: Record<string, TrendData> = {};
+    this.trends.forEach((v, k) => trendsObj[k] = v);
+    
+    const heroMetric = this.config.hero_metric === 'auto' 
+      ? selectHeroMetric(weatherData, trendsObj)
+      : 'temperature';
+    
+    const heroValue = (weatherData as Record<string, number | undefined>)[heroMetric];
+    const heroTrend = this.trends.get(heroMetric);
+    const heroHistory = this.historyData.get(heroMetric);
+
     return html`
-      <div class="historical-placeholder">
-        <div class="placeholder-icon">📊</div>
-        <div class="placeholder-text">Historical data for ${this.currentHistoryPeriod}</div>
-        <div class="placeholder-subtext">
-          Connect to Home Assistant history API to display charts
+      <div class="hero-layout">
+        <div class="hero-main">
+          <div class="hero-icon">${METRIC_ICONS[heroMetric] || '🌡️'}</div>
+          <div class="hero-value">
+            ${heroValue !== undefined ? formatMetricValue(heroValue, heroMetric) : '--'}
+          </div>
+          ${heroTrend && this.config.show_trends !== false
+            ? html`
+                <trend-indicator
+                  .trend=${heroTrend}
+                  .metric=${heroMetric}
+                  .pulse=${isMajorTrend(heroMetric as keyof typeof import('./const').TREND_THRESHOLDS, heroTrend.absoluteChange)}
+                ></trend-indicator>
+              `
+            : ''}
+          ${heroHistory && this.config.show_sparklines !== false
+            ? html`
+                <weather-sparkline
+                  .data=${heroHistory}
+                  .metric=${heroMetric}
+                  .width=${200}
+                  .height=${60}
+                  .showMinMax=${true}
+                ></weather-sparkline>
+              `
+            : ''}
+        </div>
+        <div class="hero-secondary">
+          ${this.renderSecondaryMetrics(weatherData, heroMetric)}
         </div>
       </div>
     `;
   }
 
-  private renderWindItem(weatherData: WeatherData, isCompact: boolean): TemplateResult {
-    if (this.config.show_wind_arrows && !isCompact) {
-      return html`
-        <div class="data-item wind-item">
-          <wind-compass
-            .windDirection=${weatherData.wind_direction || 0}
-            .windSpeed=${weatherData.wind_speed || 0}
-            .windDirectionAvg=${weatherData.wind_direction_avg}
-            .showArrows=${this.config.show_wind_arrows}
-            .compact=${false}
-          ></wind-compass>
-          <div class="wind-info">
-            <div class="data-label">Wind Speed</div>
-            <div class="data-value">${formatSpeed(weatherData.wind_speed || 0)}</div>
+  private renderSecondaryMetrics(weatherData: WeatherData, excludeMetric: string): TemplateResult {
+    const metrics = [
+      { key: 'temperature', show: this.config.show_temperature },
+      { key: 'humidity', show: this.config.show_humidity },
+      { key: 'pressure', show: this.config.show_pressure },
+      { key: 'wind_speed', show: this.config.show_wind },
+      { key: 'rain', show: this.config.show_rain },
+      { key: 'uv_index', show: this.config.show_uv },
+    ].filter(m => m.show !== false && m.key !== excludeMetric);
+
+    return html`
+      <div class="secondary-grid">
+        ${metrics.map(({ key }) => this.renderCompactMetric(key, weatherData))}
+      </div>
+    `;
+  }
+
+  private renderNormalMode(weatherData: WeatherData): TemplateResult {
+    return html`
+      <div class="metrics-grid normal">
+        ${this.config.show_temperature && weatherData.temperature !== undefined
+          ? this.renderMetricCard('temperature', weatherData.temperature, weatherData.feels_like)
+          : ''}
+        ${this.config.show_humidity && weatherData.humidity !== undefined
+          ? this.renderMetricCard('humidity', weatherData.humidity)
+          : ''}
+        ${this.config.show_pressure && weatherData.pressure !== undefined
+          ? this.renderMetricCard('pressure', weatherData.pressure)
+          : ''}
+        ${this.config.show_wind && weatherData.wind_speed !== undefined
+          ? this.renderWindCard(weatherData)
+          : ''}
+        ${this.config.show_rain && weatherData.rain !== undefined
+          ? this.renderMetricCard('rain', weatherData.rain, undefined, weatherData.rain_rate)
+          : ''}
+        ${this.config.show_uv && weatherData.uv_index !== undefined
+          ? this.renderUVCard(weatherData.uv_index)
+          : ''}
+        ${this.config.show_solar && weatherData.solar_radiation !== undefined
+          ? this.renderMetricCard('solar_radiation', weatherData.solar_radiation)
+          : ''}
+      </div>
+    `;
+  }
+
+  private renderCompactMode(weatherData: WeatherData): TemplateResult {
+    return html`
+      <div class="metrics-grid compact">
+        ${this.config.show_temperature && weatherData.temperature !== undefined
+          ? this.renderCompactMetric('temperature', weatherData)
+          : ''}
+        ${this.config.show_humidity && weatherData.humidity !== undefined
+          ? this.renderCompactMetric('humidity', weatherData)
+          : ''}
+        ${this.config.show_pressure && weatherData.pressure !== undefined
+          ? this.renderCompactMetric('pressure', weatherData)
+          : ''}
+        ${this.config.show_wind && weatherData.wind_speed !== undefined
+          ? this.renderCompactMetric('wind_speed', weatherData)
+          : ''}
+        ${this.config.show_rain && weatherData.rain !== undefined
+          ? this.renderCompactMetric('rain', weatherData)
+          : ''}
+        ${this.config.show_uv && weatherData.uv_index !== undefined
+          ? this.renderCompactMetric('uv_index', weatherData)
+          : ''}
+      </div>
+    `;
+  }
+
+  private renderMinimalMode(weatherData: WeatherData): TemplateResult {
+    return html`
+      <div class="minimal-layout">
+        <div class="minimal-primary">
+          <span class="minimal-icon">${METRIC_ICONS.temperature}</span>
+          <span class="minimal-value">${formatTemperature(weatherData.temperature || 0)}</span>
+          ${this.trends.get('temperature')
+            ? html`<trend-indicator .trend=${this.trends.get('temperature')} metric="temperature" compact></trend-indicator>`
+            : ''}
+        </div>
+        <div class="minimal-secondary">
+          ${weatherData.humidity !== undefined
+            ? html`<span class="minimal-stat">💧 ${weatherData.humidity}%</span>`
+            : ''}
+          ${weatherData.wind_speed !== undefined
+            ? html`<span class="minimal-stat">💨 ${formatSpeed(weatherData.wind_speed)}</span>`
+            : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  private renderMetricCard(
+    metric: string, 
+    value: number, 
+    secondaryValue?: number,
+    rateValue?: number
+  ): TemplateResult {
+    const trend = this.trends.get(metric);
+    const history = this.historyData.get(metric);
+    const isExpanded = this.expandedMetric === metric;
+    const icon = METRIC_ICONS[metric] || '📊';
+
+    return html`
+      <div 
+        class="metric-card ${isExpanded ? 'expanded' : ''}"
+        @click=${() => this.toggleExpanded(metric)}
+      >
+        <div class="metric-header">
+          <span class="metric-icon">${icon}</span>
+          <span class="metric-label">${this.getMetricLabel(metric)}</span>
+        </div>
+        
+        <div class="metric-body">
+          <div class="metric-value-row">
+            <span class="metric-value">${formatMetricValue(value, metric)}</span>
+            ${trend && this.config.show_trends !== false
+              ? html`<trend-indicator .trend=${trend} .metric=${metric} compact></trend-indicator>`
+              : ''}
+          </div>
+          
+          ${secondaryValue !== undefined
+            ? html`<div class="metric-secondary">Feels like ${formatMetricValue(secondaryValue, metric)}</div>`
+            : ''}
+          
+          ${rateValue !== undefined && rateValue > 0
+            ? html`<div class="metric-secondary">Rate: ${formatRain(rateValue)}/h</div>`
+            : ''}
+        </div>
+
+        ${history && this.config.show_sparklines !== false
+          ? html`
+              <div class="metric-sparkline">
+                <weather-sparkline
+                  .data=${history}
+                  .metric=${metric}
+                  .width=${100}
+                  .height=${24}
+                  .showGradient=${true}
+                  .showDot=${true}
+                ></weather-sparkline>
+              </div>
+            `
+          : ''}
+
+        ${this.config.show_min_max !== false && isExpanded
+          ? this.renderMinMax(metric, history)
+          : ''}
+      </div>
+    `;
+  }
+
+  private renderMinMax(metric: string, history?: SparklinePoint[]): TemplateResult {
+    if (!history || history.length === 0) return html``;
+    
+    const values = history.map(p => p.value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+
+    return html`
+      <div class="min-max-row">
+        <span class="min-value">↓ ${formatMetricValue(min, metric)}</span>
+        <span class="max-value">↑ ${formatMetricValue(max, metric)}</span>
+      </div>
+    `;
+  }
+
+  private renderCompactMetric(metric: string, weatherData: WeatherData): TemplateResult {
+    const value = (weatherData as Record<string, number | undefined>)[metric];
+    if (value === undefined) return html``;
+
+    const trend = this.trends.get(metric);
+    const icon = METRIC_ICONS[metric] || '📊';
+
+    return html`
+      <div class="compact-metric">
+        <span class="compact-icon">${icon}</span>
+        <div class="compact-info">
+          <span class="compact-value">${formatMetricValue(value, metric)}</span>
+          ${trend && this.config.show_trends !== false
+            ? html`<trend-indicator .trend=${trend} .metric=${metric} compact .showValue=${false}></trend-indicator>`
+            : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  private renderWindCard(weatherData: WeatherData): TemplateResult {
+    const trend = this.trends.get('wind_speed');
+
+    return html`
+      <div class="metric-card wind-card">
+        <div class="metric-header">
+          <span class="metric-icon">${METRIC_ICONS.wind_speed}</span>
+          <span class="metric-label">Wind</span>
+        </div>
+        
+        <div class="wind-content">
+          ${this.config.show_wind_arrows !== false
+            ? html`
+                <wind-compass
+                  .windDirection=${weatherData.wind_direction || 0}
+                  .windSpeed=${weatherData.wind_speed || 0}
+                  .windDirectionAvg=${weatherData.wind_direction_avg}
+                  .showArrows=${true}
+                  .compact=${this.config.display_mode === 'compact'}
+                ></wind-compass>
+              `
+            : ''}
+          
+          <div class="wind-stats">
+            <div class="wind-speed-row">
+              <span class="wind-speed-value">${formatSpeed(weatherData.wind_speed || 0)}</span>
+              ${trend && this.config.show_trends !== false
+                ? html`<trend-indicator .trend=${trend} metric="wind_speed" compact></trend-indicator>`
+                : ''}
+            </div>
             ${weatherData.wind_gust
-              ? html`<div class="data-subtitle">Gust: ${formatSpeed(weatherData.wind_gust)}</div>`
+              ? html`<div class="wind-gust">Gust: ${formatSpeed(weatherData.wind_gust)}</div>`
               : ''}
           </div>
         </div>
-      `;
-    }
-
-    // Compact mode without compass
-    return this.renderDataItem(
-      '💨',
-      'Wind',
-      formatSpeed(weatherData.wind_speed || 0),
-      weatherData.wind_gust ? `Gust: ${formatSpeed(weatherData.wind_gust)}` : undefined,
-      isCompact
-    );
-  }
-
-  private renderDataItem(
-    icon: string,
-    label: string,
-    value: string,
-    subtitle?: string,
-    isCompact: boolean = false
-  ): TemplateResult {
-    return html`
-      <div class="data-item ${isCompact ? 'compact' : ''}">
-        ${!isCompact ? html`<div class="data-icon">${icon}</div>` : ''}
-        <div class="data-content">
-          <div class="data-label">${isCompact ? icon + ' ' : ''}${label}</div>
-          <div class="data-value">${value}</div>
-          ${subtitle ? html`<div class="data-subtitle">${subtitle}</div>` : ''}
-        </div>
       </div>
     `;
   }
 
-  private renderUVItem(uvIndex: number, isCompact: boolean): TemplateResult {
+  private renderUVCard(uvIndex: number): TemplateResult {
     const uvLevel = getUVLevel(uvIndex);
+    const progress = getProgressPercentage(uvIndex, 'uv_index');
+    const trend = this.trends.get('uv_index');
+
     return html`
-      <div class="data-item ${isCompact ? 'compact' : ''}">
-        ${!isCompact ? html`<div class="data-icon">☀️</div>` : ''}
-        <div class="data-content">
-          <div class="data-label">${isCompact ? '☀️ ' : ''}UV Index</div>
-          <div class="data-value">
-            ${uvIndex}
-            <span class="uv-badge" style="background-color: ${uvLevel.color}">
-              ${uvLevel.label}
-            </span>
+      <div class="metric-card uv-card">
+        <div class="metric-header">
+          <span class="metric-icon">${METRIC_ICONS.uv_index}</span>
+          <span class="metric-label">UV Index</span>
+        </div>
+        
+        <div class="metric-body">
+          <div class="metric-value-row">
+            <span class="metric-value">${uvIndex}</span>
+            <span class="uv-badge" style="background-color: ${uvLevel.color}">${uvLevel.label}</span>
+            ${trend && this.config.show_trends !== false
+              ? html`<trend-indicator .trend=${trend} metric="uv_index" compact></trend-indicator>`
+              : ''}
+          </div>
+          
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: ${progress}%; background-color: ${uvLevel.color}"></div>
           </div>
         </div>
       </div>
     `;
+  }
+
+  private renderHistoryView(): TemplateResult {
+    const periods: Array<'day' | 'week' | 'month' | 'year'> = ['day', 'week', 'month', 'year'];
+
+    return html`
+      <div class="history-view">
+        <div class="period-tabs">
+          ${periods.map(
+            (period) => html`
+              <button
+                class="period-tab ${this.currentHistoryPeriod === period ? 'active' : ''}"
+                @click=${() => this.setHistoryPeriod(period)}
+              >
+                ${period.charAt(0).toUpperCase() + period.slice(1)}
+              </button>
+            `
+          )}
+        </div>
+        
+        <div class="history-content">
+          ${Array.from(this.historyData.entries()).map(([metric, data]) => html`
+            <div class="history-metric">
+              <div class="history-metric-header">
+                <span class="metric-icon">${METRIC_ICONS[metric] || '📊'}</span>
+                <span class="metric-label">${this.getMetricLabel(metric)}</span>
+                ${this.renderMinMax(metric, data)}
+              </div>
+              <weather-sparkline
+                .data=${data}
+                .metric=${metric}
+                .width=${280}
+                .height=${50}
+                .showMinMax=${false}
+              ></weather-sparkline>
+            </div>
+          `)}
+          
+          ${this.historyData.size === 0
+            ? html`
+                <div class="history-empty">
+                  <span class="empty-icon">📊</span>
+                  <span class="empty-text">Loading history data...</span>
+                </div>
+              `
+            : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  private getMetricLabel(metric: string): string {
+    const labels: Record<string, string> = {
+      temperature: 'Temperature',
+      humidity: 'Humidity',
+      pressure: 'Pressure',
+      wind_speed: 'Wind Speed',
+      wind_direction: 'Wind Direction',
+      wind_gust: 'Wind Gust',
+      rain: 'Rain',
+      rain_rate: 'Rain Rate',
+      uv_index: 'UV Index',
+      solar_radiation: 'Solar',
+    };
+    return labels[metric] || metric;
+  }
+
+  private toggleExpanded(metric: string): void {
+    this.expandedMetric = this.expandedMetric === metric ? null : metric;
   }
 
   private setDataView(view: 'live' | 'history'): void {
     this.currentDataView = view;
+    if (view === 'history') {
+      this.lastHistoryFetch = 0; // Force refresh
+      this.fetchHistoryData();
+    }
   }
 
   private setHistoryPeriod(period: 'day' | 'week' | 'month' | 'year'): void {
     this.currentHistoryPeriod = period;
+    this.lastHistoryFetch = 0; // Force refresh
+    this.fetchHistoryData();
   }
 
   static get styles(): CSSResultGroup {
     return css`
       :host {
         display: block;
+        --card-radius: 16px;
+        --glass-bg: rgba(255, 255, 255, 0.15);
+        --glass-border: rgba(255, 255, 255, 0.25);
+        --transition-speed: 0.3s;
       }
 
-      ha-card {
-        padding: 16px;
+      /* Card Base */
+      .weather-card {
+        position: relative;
+        border-radius: var(--card-radius);
+        overflow: hidden;
+        color: var(--primary-text-color);
       }
 
-      ha-card.compact {
-        padding: 12px;
+      .weather-card.glass {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
       }
 
+      .weather-card.solid {
+        background: var(--card-background-color, #fff);
+        box-shadow: var(--ha-card-box-shadow, 0 2px 8px rgba(0, 0, 0, 0.1));
+      }
+
+      .weather-card.minimal {
+        background: transparent;
+        box-shadow: none;
+        border: none;
+      }
+
+      .card-inner {
+        position: relative;
+        z-index: 1;
+        padding: 20px;
+      }
+
+      /* Background */
+      .background-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        transition: background var(--transition-speed);
+      }
+
+      .background-layer.day { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+      .background-layer.night { background: linear-gradient(135deg, #0c1445 0%, #1a237e 100%); }
+      .background-layer.dawn { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); }
+      .background-layer.dusk { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+
+      .gradient-overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.2) 100%);
+      }
+
+      /* Header */
       .card-header {
-        font-size: 24px;
-        font-weight: bold;
-        padding-bottom: 12px;
-      }
-
-      .compact .card-header {
-        font-size: 20px;
-        padding-bottom: 8px;
-      }
-
-      .controls {
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 8px;
+        align-items: flex-start;
         margin-bottom: 16px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid var(--divider-color, #e0e0e0);
-      }
-
-      .view-selector,
-      .period-selector {
-        display: flex;
-        gap: 4px;
-      }
-
-      .control-btn {
-        padding: 6px 12px;
-        border: 1px solid var(--divider-color, #e0e0e0);
-        background: var(--card-background-color, white);
-        color: var(--primary-text-color, #212121);
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-        transition: all 0.2s;
-      }
-
-      .control-btn:hover {
-        background: var(--secondary-background-color, #f5f5f5);
-      }
-
-      .control-btn.active {
-        background: var(--primary-color, #03a9f4);
-        color: white;
-        border-color: var(--primary-color, #03a9f4);
-      }
-
-      .warnings {
-        margin-bottom: 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      .warning {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px;
-        border-radius: 8px;
-        animation: slideIn 0.3s ease-out;
-      }
-
-      @keyframes slideIn {
-        from {
-          opacity: 0;
-          transform: translateY(-10px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      .warning.medium {
-        background: #fff3cd;
-        border-left: 4px solid #ffc107;
-      }
-
-      .warning.high {
-        background: #f8d7da;
-        border-left: 4px solid #dc3545;
-      }
-
-      .warning-icon {
-        font-size: 24px;
-        line-height: 1;
-      }
-
-      .warning-message {
-        flex: 1;
-        font-size: 14px;
-        color: var(--primary-text-color, #212121);
-      }
-
-      .error {
-        color: var(--error-color, #db4437);
-        padding: 16px;
-        font-weight: 600;
-      }
-
-      .error-hint {
-        color: var(--secondary-text-color, #666);
-        padding: 0 16px 16px 16px;
-        font-size: 14px;
-      }
-
-      .weather-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         gap: 16px;
       }
 
-      .weather-grid.compact {
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 8px;
+      .card-title {
+        margin: 0;
+        font-size: 1.4rem;
+        font-weight: 600;
       }
 
-      .data-item {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-        padding: 12px;
-        background: var(--secondary-background-color, #f5f5f5);
-        border-radius: 8px;
-        transition:
-          transform 0.2s,
-          box-shadow 0.2s;
-      }
-
-      .data-item:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      }
-
-      .data-item.compact {
-        padding: 8px;
-        gap: 8px;
-      }
-
-      .data-item.wind-item {
-        grid-column: span 2;
+      .weather-condition {
         display: flex;
         align-items: center;
-        justify-content: center;
-        gap: 24px;
+        gap: 8px;
+        margin-top: 4px;
+        opacity: 0.9;
       }
 
-      .data-icon {
-        font-size: 32px;
-        line-height: 1;
+      .condition-icon { font-size: 1.4rem; }
+      .condition-text { font-size: 0.85rem; }
+
+      /* View Toggle */
+      .view-toggle {
+        display: flex;
+        gap: 4px;
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 10px;
+        padding: 4px;
+        flex-shrink: 0;
       }
 
-      .data-content {
-        flex: 1;
-        min-width: 0;
+      .toggle-btn {
+        background: transparent;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: inherit;
+        opacity: 0.7;
       }
 
-      .data-label {
-        font-size: 12px;
-        color: var(--secondary-text-color, #666);
+      .toggle-btn:hover { opacity: 1; background: rgba(255, 255, 255, 0.15); }
+      .toggle-btn.active { opacity: 1; background: rgba(255, 255, 255, 0.25); }
+      .btn-icon { font-size: 1rem; }
+
+      /* Warnings */
+      .warnings-container {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+
+      .warning-pill {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(10px);
+        animation: slideIn 0.3s ease-out;
+      }
+
+      .warning-pill.medium { border-left: 4px solid #ffc107; }
+      .warning-pill.high { border-left: 4px solid #dc3545; animation: pulse 2s infinite; }
+
+      @keyframes slideIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+      }
+
+      .warning-icon { font-size: 1.2rem; }
+      .warning-text { font-size: 0.85rem; flex: 1; }
+
+      /* Metrics Grid */
+      .metrics-grid {
+        display: grid;
+        gap: 12px;
+      }
+
+      .metrics-grid.normal {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      }
+
+      .metrics-grid.compact {
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+        gap: 8px;
+      }
+
+      /* Metric Card */
+      .metric-card {
+        background: rgba(0, 0, 0, 0.15);
+        backdrop-filter: blur(10px);
+        border-radius: 12px;
+        padding: 14px;
+        cursor: pointer;
+        transition: all var(--transition-speed);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .metric-card:hover {
+        transform: translateY(-2px);
+        background: rgba(0, 0, 0, 0.2);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+      }
+
+      .metric-card.expanded { grid-column: span 2; }
+      .metric-card.wind-card { grid-column: span 2; }
+
+      .metric-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .metric-icon { font-size: 1.2rem; }
+
+      .metric-label {
+        font-size: 0.7rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        margin-bottom: 4px;
+        opacity: 0.8;
       }
 
-      .compact .data-label {
-        font-size: 11px;
+      .metric-body {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
       }
 
-      .data-value {
-        font-size: 20px;
-        font-weight: 600;
-        color: var(--primary-text-color, #212121);
+      .metric-value-row {
         display: flex;
         align-items: center;
         gap: 8px;
         flex-wrap: wrap;
       }
 
-      .compact .data-value {
-        font-size: 16px;
+      .metric-value {
+        font-size: 1.6rem;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
       }
 
-      .data-subtitle {
-        font-size: 12px;
-        color: var(--secondary-text-color, #666);
+      .metric-secondary {
+        font-size: 0.75rem;
+        opacity: 0.7;
+      }
+
+      .metric-sparkline { margin-top: 10px; }
+
+      /* Min/Max */
+      .min-max-row {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 0.75rem;
+        opacity: 0.8;
+      }
+
+      .min-value { color: #64b5f6; }
+      .max-value { color: #ef5350; }
+
+      /* Wind Card */
+      .wind-content {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+
+      .wind-stats { flex: 1; }
+
+      .wind-speed-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .wind-speed-value {
+        font-size: 1.4rem;
+        font-weight: 600;
+      }
+
+      .wind-gust {
+        font-size: 0.8rem;
+        opacity: 0.7;
         margin-top: 4px;
       }
 
+      /* UV Card */
       .uv-badge {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 11px;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 0.65rem;
         font-weight: 600;
         color: white;
         text-transform: uppercase;
       }
 
-      .wind-info {
-        display: flex;
-        flex-direction: column;
+      .progress-bar {
+        height: 4px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 2px;
+        margin-top: 12px;
+        overflow: hidden;
       }
 
-      .historical-placeholder {
+      .progress-fill {
+        height: 100%;
+        border-radius: 2px;
+        transition: width 0.5s ease-out;
+      }
+
+      /* Compact Metric */
+      .compact-metric {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 10px;
+        transition: all 0.2s;
+      }
+
+      .compact-metric:hover {
+        background: rgba(0, 0, 0, 0.2);
+      }
+
+      .compact-icon { font-size: 1.1rem; }
+
+      .compact-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .compact-value {
+        font-size: 1rem;
+        font-weight: 600;
+      }
+
+      /* Hero Layout */
+      .hero-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      .hero-main {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 8px;
+      }
+
+      .hero-icon { font-size: 2.5rem; }
+
+      .hero-value {
+        font-size: 3.5rem;
+        font-weight: 700;
+        line-height: 1;
+      }
+
+      .secondary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+        gap: 10px;
+      }
+
+      /* Minimal Layout */
+      .minimal-layout {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+      }
+
+      .minimal-primary {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .minimal-icon { font-size: 1.4rem; }
+
+      .minimal-value {
+        font-size: 1.8rem;
+        font-weight: 600;
+      }
+
+      .minimal-secondary {
+        display: flex;
+        gap: 16px;
+        font-size: 0.85rem;
+        opacity: 0.8;
+      }
+
+      .minimal-stat {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      /* History View */
+      .history-view {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .period-tabs {
+        display: flex;
+        gap: 4px;
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 10px;
+        padding: 4px;
+      }
+
+      .period-tab {
+        flex: 1;
+        background: transparent;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        color: inherit;
+        font-size: 0.8rem;
+        transition: all 0.2s;
+        opacity: 0.7;
+      }
+
+      .period-tab:hover { opacity: 1; background: rgba(255, 255, 255, 0.1); }
+      .period-tab.active { opacity: 1; background: rgba(255, 255, 255, 0.2); font-weight: 600; }
+
+      .history-content {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .history-metric {
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 12px;
+        padding: 14px;
+      }
+
+      .history-metric-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
+
+      .history-empty {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 48px 24px;
+        padding: 40px;
+        gap: 12px;
+        opacity: 0.6;
+      }
+
+      .empty-icon { font-size: 2.5rem; }
+      .empty-text { font-size: 0.9rem; }
+
+      /* Error State */
+      .error-card {
+        background: var(--card-background-color, #fff);
+      }
+
+      .error-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
         text-align: center;
+        gap: 12px;
       }
 
-      .placeholder-icon {
-        font-size: 64px;
-        margin-bottom: 16px;
-        opacity: 0.5;
-      }
+      .error-icon { font-size: 2.5rem; }
+      .error-message { font-size: 1rem; font-weight: 600; color: var(--error-color, #db4437); }
+      .error-hint { font-size: 0.85rem; color: var(--secondary-text-color, #666); }
 
-      .placeholder-text {
-        font-size: 18px;
-        font-weight: 600;
-        color: var(--primary-text-color, #212121);
-        margin-bottom: 8px;
-      }
-
-      .placeholder-subtext {
-        font-size: 14px;
-        color: var(--secondary-text-color, #666);
-      }
-
+      /* Responsive */
       @media (max-width: 600px) {
-        .weather-grid {
-          grid-template-columns: 1fr;
-        }
+        .card-inner { padding: 16px; }
+        .metrics-grid.normal { grid-template-columns: 1fr 1fr; }
+        .metric-card.wind-card, .metric-card.expanded { grid-column: span 2; }
+        .wind-content { flex-direction: column; text-align: center; }
+        .hero-value { font-size: 2.8rem; }
+        .card-header { flex-direction: column; gap: 12px; }
+        .view-toggle { align-self: flex-start; }
+      }
 
-        .data-item.wind-item {
-          grid-column: span 1;
-          flex-direction: column;
-        }
-
-        .controls {
-          flex-direction: column;
-          align-items: stretch;
-        }
-
-        .view-selector,
-        .period-selector {
-          justify-content: center;
-        }
+      @media (max-width: 400px) {
+        .metrics-grid.normal { grid-template-columns: 1fr; }
+        .metric-card.wind-card, .metric-card.expanded { grid-column: span 1; }
       }
     `;
   }

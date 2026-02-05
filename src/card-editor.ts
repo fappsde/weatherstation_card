@@ -13,7 +13,10 @@ interface HaFormSchema {
   default?: unknown;
 }
 
-// Define schemas as constants (not recreated on each render)
+// ============================================
+// Schema Definitions
+// ============================================
+
 const ENTITY_MODE_SCHEMA: HaFormSchema[] = [
   {
     name: 'entity_mode',
@@ -30,17 +33,11 @@ const ENTITY_MODE_SCHEMA: HaFormSchema[] = [
 ];
 
 const DEVICE_PICKER_SCHEMA: HaFormSchema[] = [
-  {
-    name: 'device_id',
-    selector: { device: {} },
-  },
+  { name: 'device_id', selector: { device: {} } },
 ];
 
 const GENERAL_SETTINGS_SCHEMA: HaFormSchema[] = [
-  {
-    name: 'name',
-    selector: { text: {} },
-  },
+  { name: 'name', selector: { text: {} } },
 ];
 
 const DISPLAY_MODE_SCHEMA: HaFormSchema[] = [
@@ -49,8 +46,26 @@ const DISPLAY_MODE_SCHEMA: HaFormSchema[] = [
     selector: {
       select: {
         options: [
-          { value: 'normal', label: 'Normal' },
-          { value: 'compact', label: 'Compact' },
+          { value: 'normal', label: 'Normal - Full layout with all details' },
+          { value: 'compact', label: 'Compact - Space-efficient grid' },
+          { value: 'hero', label: 'Hero - Featured metric with large display' },
+          { value: 'minimal', label: 'Minimal - Single line summary' },
+        ],
+        mode: 'dropdown',
+      },
+    },
+  },
+];
+
+const CARD_STYLE_SCHEMA: HaFormSchema[] = [
+  {
+    name: 'card_style',
+    selector: {
+      select: {
+        options: [
+          { value: 'glass', label: 'Glass - Modern glassmorphism with gradients' },
+          { value: 'solid', label: 'Solid - Traditional card background' },
+          { value: 'minimal', label: 'Minimal - Transparent, no background' },
         ],
         mode: 'dropdown',
       },
@@ -90,6 +105,39 @@ const HISTORY_PERIOD_SCHEMA: HaFormSchema[] = [
   },
 ];
 
+const TREND_PERIOD_SCHEMA: HaFormSchema[] = [
+  {
+    name: 'trend_period',
+    selector: {
+      select: {
+        options: [
+          { value: '1h', label: '1 Hour' },
+          { value: '3h', label: '3 Hours' },
+          { value: '6h', label: '6 Hours' },
+          { value: '12h', label: '12 Hours' },
+          { value: '24h', label: '24 Hours' },
+        ],
+        mode: 'dropdown',
+      },
+    },
+  },
+];
+
+const HERO_METRIC_SCHEMA: HaFormSchema[] = [
+  {
+    name: 'hero_metric',
+    selector: {
+      select: {
+        options: [
+          { value: 'auto', label: 'Auto - Select most significant' },
+          { value: 'temperature', label: 'Temperature' },
+        ],
+        mode: 'dropdown',
+      },
+    },
+  },
+];
+
 const VISIBLE_SENSORS_SCHEMA: HaFormSchema[] = [
   { name: 'show_temperature', selector: { boolean: {} } },
   { name: 'show_humidity', selector: { boolean: {} } },
@@ -99,6 +147,17 @@ const VISIBLE_SENSORS_SCHEMA: HaFormSchema[] = [
   { name: 'show_rain', selector: { boolean: {} } },
   { name: 'show_uv', selector: { boolean: {} } },
   { name: 'show_solar', selector: { boolean: {} } },
+];
+
+const TREND_FEATURES_SCHEMA: HaFormSchema[] = [
+  { name: 'show_trends', selector: { boolean: {} } },
+  { name: 'show_sparklines', selector: { boolean: {} } },
+  { name: 'show_min_max', selector: { boolean: {} } },
+  { name: 'show_weather_condition', selector: { boolean: {} } },
+];
+
+const ANIMATION_SCHEMA: HaFormSchema[] = [
+  { name: 'enable_animations', selector: { boolean: {} } },
 ];
 
 const WARNINGS_TOGGLE_SCHEMA: HaFormSchema[] = [
@@ -115,6 +174,7 @@ const ENTITY_PICKER_SCHEMA: HaFormSchema[] = Object.keys(ENTITY_LABELS).map((key
 export class WeatherStationCardEditor extends LitElement implements LovelaceCardEditor {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: WeatherStationCardConfig;
+  @state() private _activeTab: 'data' | 'appearance' | 'features' | 'warnings' = 'data';
 
   public setConfig(config: WeatherStationCardConfig): void {
     this._config = config;
@@ -125,9 +185,6 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
     void this._loadHaForm();
   }
 
-  /**
-   * Load ha-form component using the recommended approach.
-   */
   private async _loadHaForm(): Promise<void> {
     if (customElements.get('ha-form')) return;
 
@@ -135,7 +192,6 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
     const helpers = await (window as any).loadCardHelpers?.();
     if (!helpers) return;
 
-    // Creating a card element triggers loading of ha-form
     const card = await helpers.createCardElement({ type: 'entity', entity: 'sun.sun' });
     if (card) {
       await card.getConfigElement?.();
@@ -148,18 +204,25 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
       name: 'Card Name',
       entity_mode: 'Entity Mode',
       display_mode: 'Display Mode',
-      data_view: 'Data View',
+      card_style: 'Card Style',
+      data_view: 'Default View',
       history_period: 'History Period',
+      trend_period: 'Trend Comparison Period',
+      hero_metric: 'Hero Metric (for Hero mode)',
       show_temperature: 'Show Temperature',
       show_humidity: 'Show Humidity',
       show_pressure: 'Show Pressure',
       show_wind: 'Show Wind',
-      show_wind_arrows: 'Show Wind Direction Arrows',
+      show_wind_arrows: 'Show Wind Compass',
       show_rain: 'Show Rain',
       show_uv: 'Show UV Index',
       show_solar: 'Show Solar Radiation',
-      enable_warnings: 'Enable Warnings',
-      // Entity labels with underscore format
+      show_trends: 'Show Trend Indicators',
+      show_sparklines: 'Show Mini Charts (Sparklines)',
+      show_min_max: 'Show Min/Max Values',
+      show_weather_condition: 'Show Weather Condition',
+      enable_animations: 'Enable Animations',
+      enable_warnings: 'Enable Weather Warnings',
       ...Object.fromEntries(
         Object.entries(ENTITY_LABELS).map(([key, label]) => [`entities_${key}`, label])
       ),
@@ -167,17 +230,17 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
     return labels[schema.name] || schema.name;
   };
 
-  /**
-   * Convert config to flat data object for ha-form
-   */
   private _getFormData(): Record<string, unknown> {
     const data: Record<string, unknown> = {
       entity_mode: this._config.entity_mode || 'auto',
       device_id: this._config.device_id || '',
       name: this._config.name || '',
       display_mode: this._config.display_mode || 'normal',
+      card_style: this._config.card_style || 'glass',
       data_view: this._config.data_view || 'live',
       history_period: this._config.history_period || 'day',
+      trend_period: this._config.trend_period || '1h',
+      hero_metric: this._config.hero_metric || 'auto',
       show_temperature: this._config.show_temperature !== false,
       show_humidity: this._config.show_humidity !== false,
       show_pressure: this._config.show_pressure !== false,
@@ -186,10 +249,14 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
       show_rain: this._config.show_rain !== false,
       show_uv: this._config.show_uv !== false,
       show_solar: this._config.show_solar !== false,
+      show_trends: this._config.show_trends !== false,
+      show_sparklines: this._config.show_sparklines !== false,
+      show_min_max: this._config.show_min_max !== false,
+      show_weather_condition: this._config.show_weather_condition !== false,
+      enable_animations: this._config.enable_animations !== false,
       enable_warnings: this._config.enable_warnings || false,
     };
 
-    // Flatten entities with underscore separator
     if (this._config.entities) {
       Object.entries(this._config.entities).forEach(([key, value]) => {
         data[`entities_${key}`] = value || '';
@@ -204,12 +271,48 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
       return html``;
     }
 
+    return html`
+      <div class="card-config">
+        ${this.renderTabs()}
+        <div class="tab-content">
+          ${this._activeTab === 'data' ? this.renderDataTab() : ''}
+          ${this._activeTab === 'appearance' ? this.renderAppearanceTab() : ''}
+          ${this._activeTab === 'features' ? this.renderFeaturesTab() : ''}
+          ${this._activeTab === 'warnings' ? this.renderWarningsTab() : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  private renderTabs(): TemplateResult {
+    const tabs = [
+      { id: 'data', label: '📊 Data', icon: '📊' },
+      { id: 'appearance', label: '🎨 Appearance', icon: '🎨' },
+      { id: 'features', label: '⚡ Features', icon: '⚡' },
+      { id: 'warnings', label: '⚠️ Warnings', icon: '⚠️' },
+    ] as const;
+
+    return html`
+      <div class="tabs">
+        ${tabs.map(tab => html`
+          <button 
+            class="tab ${this._activeTab === tab.id ? 'active' : ''}"
+            @click=${() => this._activeTab = tab.id}
+          >
+            ${tab.label}
+          </button>
+        `)}
+      </div>
+    `;
+  }
+
+  private renderDataTab(): TemplateResult {
     const data = this._getFormData();
     const entityMode = this._config.entity_mode || 'auto';
 
     return html`
-      <div class="card-config">
-        <h3>Entity Configuration</h3>
+      <div class="section">
+        <h3>🔌 Data Source</h3>
         <ha-form
           .hass=${this.hass}
           .data=${data}
@@ -220,9 +323,9 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
 
         ${entityMode === 'auto'
           ? html`
-              <div class="entity-mode-info">
-                Select your weather station device and the card will automatically discover and use
-                all its sensors.
+              <div class="info-box">
+                <span class="info-icon">💡</span>
+                <span>Select your weather station device and sensors will be auto-discovered.</span>
               </div>
               <ha-form
                 .hass=${this.hass}
@@ -234,8 +337,9 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
               ${this._config.device_id ? this.renderAutoAssignments() : nothing}
             `
           : html`
-              <div class="entity-mode-info">
-                Select individual sensor entities for each measurement.
+              <div class="info-box">
+                <span class="info-icon">⚙️</span>
+                <span>Manually select individual sensor entities for each measurement.</span>
               </div>
               <ha-form
                 .hass=${this.hass}
@@ -245,8 +349,10 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
                 @value-changed=${this._formValueChanged}
               ></ha-form>
             `}
+      </div>
 
-        <h3>General Settings</h3>
+      <div class="section">
+        <h3>📝 General</h3>
         <ha-form
           .hass=${this.hass}
           .data=${data}
@@ -254,8 +360,30 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
           .computeLabel=${this._computeLabel}
           @value-changed=${this._formValueChanged}
         ></ha-form>
+      </div>
 
-        <h3>Display Mode</h3>
+      <div class="section">
+        <h3>👁️ Visible Sensors</h3>
+        <ha-form
+          .hass=${this.hass}
+          .data=${data}
+          .schema=${VISIBLE_SENSORS_SCHEMA}
+          .computeLabel=${this._computeLabel}
+          @value-changed=${this._formValueChanged}
+        ></ha-form>
+      </div>
+    `;
+  }
+
+  private renderAppearanceTab(): TemplateResult {
+    const data = this._getFormData();
+
+    return html`
+      <div class="section">
+        <h3>🖼️ Display Mode</h3>
+        <div class="mode-preview">
+          ${this.renderModePreview()}
+        </div>
         <ha-form
           .hass=${this.hass}
           .data=${data}
@@ -263,8 +391,119 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
           .computeLabel=${this._computeLabel}
           @value-changed=${this._formValueChanged}
         ></ha-form>
+        
+        ${this._config.display_mode === 'hero'
+          ? html`
+              <ha-form
+                .hass=${this.hass}
+                .data=${data}
+                .schema=${HERO_METRIC_SCHEMA}
+                .computeLabel=${this._computeLabel}
+                @value-changed=${this._formValueChanged}
+              ></ha-form>
+            `
+          : nothing}
+      </div>
 
-        <h3>Data View</h3>
+      <div class="section">
+        <h3>🎨 Card Style</h3>
+        <ha-form
+          .hass=${this.hass}
+          .data=${data}
+          .schema=${CARD_STYLE_SCHEMA}
+          .computeLabel=${this._computeLabel}
+          @value-changed=${this._formValueChanged}
+        ></ha-form>
+      </div>
+
+      <div class="section">
+        <h3>✨ Animations</h3>
+        <ha-form
+          .hass=${this.hass}
+          .data=${data}
+          .schema=${ANIMATION_SCHEMA}
+          .computeLabel=${this._computeLabel}
+          @value-changed=${this._formValueChanged}
+        ></ha-form>
+      </div>
+    `;
+  }
+
+  private renderModePreview(): TemplateResult {
+    const mode = this._config.display_mode || 'normal';
+    
+    const previews: Record<string, TemplateResult> = {
+      normal: html`
+        <div class="preview-card">
+          <div class="preview-header">Weather Station</div>
+          <div class="preview-grid">
+            <div class="preview-metric">🌡️ 22°C</div>
+            <div class="preview-metric">💧 65%</div>
+            <div class="preview-metric">💨 15 km/h</div>
+            <div class="preview-metric">🌧️ 0 mm</div>
+          </div>
+        </div>
+      `,
+      compact: html`
+        <div class="preview-card compact">
+          <div class="preview-row">
+            <span>🌡️ 22°C</span>
+            <span>💧 65%</span>
+            <span>💨 15</span>
+          </div>
+        </div>
+      `,
+      hero: html`
+        <div class="preview-card hero">
+          <div class="preview-hero-value">22°C</div>
+          <div class="preview-hero-sub">↑ +2° / 1h</div>
+        </div>
+      `,
+      minimal: html`
+        <div class="preview-card minimal">
+          <span>🌡️ 22°C</span>
+          <span>💧 65%</span>
+        </div>
+      `,
+    };
+
+    return previews[mode] || previews.normal;
+  }
+
+  private renderFeaturesTab(): TemplateResult {
+    const data = this._getFormData();
+
+    return html`
+      <div class="section">
+        <h3>📈 Trends & History</h3>
+        <div class="info-box">
+          <span class="info-icon">📊</span>
+          <span>Trends show how values have changed. Sparklines display mini charts of recent history.</span>
+        </div>
+        <ha-form
+          .hass=${this.hass}
+          .data=${data}
+          .schema=${TREND_FEATURES_SCHEMA}
+          .computeLabel=${this._computeLabel}
+          @value-changed=${this._formValueChanged}
+        ></ha-form>
+        
+        ${this._config.show_trends !== false
+          ? html`
+              <h4>Trend Comparison Period</h4>
+              <ha-form
+                .hass=${this.hass}
+                .data=${data}
+                .schema=${TREND_PERIOD_SCHEMA}
+                .computeLabel=${this._computeLabel}
+                @value-changed=${this._formValueChanged}
+              ></ha-form>
+            `
+          : nothing}
+      </div>
+
+      <div class="section">
+        <h3>📅 Default View</h3>
         <ha-form
           .hass=${this.hass}
           .data=${data}
@@ -283,17 +522,20 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
               ></ha-form>
             `
           : nothing}
+      </div>
+    `;
+  }
 
-        <h3>Visible Sensors</h3>
-        <ha-form
-          .hass=${this.hass}
-          .data=${data}
-          .schema=${VISIBLE_SENSORS_SCHEMA}
-          .computeLabel=${this._computeLabel}
-          @value-changed=${this._formValueChanged}
-        ></ha-form>
+  private renderWarningsTab(): TemplateResult {
+    const data = this._getFormData();
 
-        <h3>Warnings</h3>
+    return html`
+      <div class="section">
+        <h3>⚠️ Weather Warnings</h3>
+        <div class="info-box warning">
+          <span class="info-icon">🔔</span>
+          <span>Get alerted when weather conditions exceed thresholds you set.</span>
+        </div>
         <ha-form
           .hass=${this.hass}
           .data=${data}
@@ -370,92 +612,97 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
 
     return html`
       <div class="warning-settings">
-        <h4>Wind Speed Warning</h4>
-        <ha-form
-          .hass=${this.hass}
-          .data=${warningsData}
-          .schema=${[warningSchemas.wind_speed[0]]}
-          .computeLabel=${computeWarningLabel}
-          @value-changed=${this._warningFormValueChanged}
-        ></ha-form>
-        ${this._config.warnings?.wind_speed?.enabled
-          ? html`
-              <ha-form
-                .hass=${this.hass}
-                .data=${warningsData}
-                .schema=${warningSchemas.wind_speed.slice(1)}
-                .computeLabel=${computeWarningLabel}
-                @value-changed=${this._warningFormValueChanged}
-              ></ha-form>
-            `
-          : nothing}
+        <div class="warning-category">
+          <h4>💨 Wind Speed</h4>
+          <ha-form
+            .hass=${this.hass}
+            .data=${warningsData}
+            .schema=${[warningSchemas.wind_speed[0]]}
+            .computeLabel=${computeWarningLabel}
+            @value-changed=${this._warningFormValueChanged}
+          ></ha-form>
+          ${this._config.warnings?.wind_speed?.enabled
+            ? html`
+                <ha-form
+                  .hass=${this.hass}
+                  .data=${warningsData}
+                  .schema=${warningSchemas.wind_speed.slice(1)}
+                  .computeLabel=${computeWarningLabel}
+                  @value-changed=${this._warningFormValueChanged}
+                ></ha-form>
+              `
+            : nothing}
+        </div>
 
-        <h4>Temperature Warning</h4>
-        <ha-form
-          .hass=${this.hass}
-          .data=${warningsData}
-          .schema=${[warningSchemas.temperature[0]]}
-          .computeLabel=${computeWarningLabel}
-          @value-changed=${this._warningFormValueChanged}
-        ></ha-form>
-        ${this._config.warnings?.temperature?.enabled
-          ? html`
-              <ha-form
-                .hass=${this.hass}
-                .data=${warningsData}
-                .schema=${warningSchemas.temperature.slice(1)}
-                .computeLabel=${computeWarningLabel}
-                @value-changed=${this._warningFormValueChanged}
-              ></ha-form>
-            `
-          : nothing}
+        <div class="warning-category">
+          <h4>🌡️ Temperature</h4>
+          <ha-form
+            .hass=${this.hass}
+            .data=${warningsData}
+            .schema=${[warningSchemas.temperature[0]]}
+            .computeLabel=${computeWarningLabel}
+            @value-changed=${this._warningFormValueChanged}
+          ></ha-form>
+          ${this._config.warnings?.temperature?.enabled
+            ? html`
+                <ha-form
+                  .hass=${this.hass}
+                  .data=${warningsData}
+                  .schema=${warningSchemas.temperature.slice(1)}
+                  .computeLabel=${computeWarningLabel}
+                  @value-changed=${this._warningFormValueChanged}
+                ></ha-form>
+              `
+            : nothing}
+        </div>
 
-        <h4>UV Index Warning</h4>
-        <ha-form
-          .hass=${this.hass}
-          .data=${warningsData}
-          .schema=${[warningSchemas.uv[0]]}
-          .computeLabel=${computeWarningLabel}
-          @value-changed=${this._warningFormValueChanged}
-        ></ha-form>
-        ${this._config.warnings?.uv?.enabled
-          ? html`
-              <ha-form
-                .hass=${this.hass}
-                .data=${warningsData}
-                .schema=${warningSchemas.uv.slice(1)}
-                .computeLabel=${computeWarningLabel}
-                @value-changed=${this._warningFormValueChanged}
-              ></ha-form>
-            `
-          : nothing}
+        <div class="warning-category">
+          <h4>☀️ UV Index</h4>
+          <ha-form
+            .hass=${this.hass}
+            .data=${warningsData}
+            .schema=${[warningSchemas.uv[0]]}
+            .computeLabel=${computeWarningLabel}
+            @value-changed=${this._warningFormValueChanged}
+          ></ha-form>
+          ${this._config.warnings?.uv?.enabled
+            ? html`
+                <ha-form
+                  .hass=${this.hass}
+                  .data=${warningsData}
+                  .schema=${warningSchemas.uv.slice(1)}
+                  .computeLabel=${computeWarningLabel}
+                  @value-changed=${this._warningFormValueChanged}
+                ></ha-form>
+              `
+            : nothing}
+        </div>
 
-        <h4>Rain Rate Warning</h4>
-        <ha-form
-          .hass=${this.hass}
-          .data=${warningsData}
-          .schema=${[warningSchemas.rain_rate[0]]}
-          .computeLabel=${computeWarningLabel}
-          @value-changed=${this._warningFormValueChanged}
-        ></ha-form>
-        ${this._config.warnings?.rain_rate?.enabled
-          ? html`
-              <ha-form
-                .hass=${this.hass}
-                .data=${warningsData}
-                .schema=${warningSchemas.rain_rate.slice(1)}
-                .computeLabel=${computeWarningLabel}
-                @value-changed=${this._warningFormValueChanged}
-              ></ha-form>
-            `
-          : nothing}
+        <div class="warning-category">
+          <h4>🌧️ Rain Rate</h4>
+          <ha-form
+            .hass=${this.hass}
+            .data=${warningsData}
+            .schema=${[warningSchemas.rain_rate[0]]}
+            .computeLabel=${computeWarningLabel}
+            @value-changed=${this._warningFormValueChanged}
+          ></ha-form>
+          ${this._config.warnings?.rain_rate?.enabled
+            ? html`
+                <ha-form
+                  .hass=${this.hass}
+                  .data=${warningsData}
+                  .schema=${warningSchemas.rain_rate.slice(1)}
+                  .computeLabel=${computeWarningLabel}
+                  @value-changed=${this._warningFormValueChanged}
+                ></ha-form>
+              `
+            : nothing}
+        </div>
       </div>
     `;
   }
 
-  /**
-   * Unified handler for main form value changes
-   */
   private _formValueChanged(ev: CustomEvent): void {
     ev.stopPropagation();
     if (!this._config || !this.hass) return;
@@ -465,7 +712,6 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
 
     Object.entries(newData).forEach(([key, value]) => {
       if (key.startsWith('entities_')) {
-        // Handle entity values (underscore separator)
         const entityKey = key.replace('entities_', '');
         if (!newConfig.entities) {
           newConfig.entities = {};
@@ -476,12 +722,10 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
           delete newConfig.entities[entityKey];
         }
       } else {
-        // Handle top-level values
         newConfig[key] = value;
       }
     });
 
-    // Clean up empty entities object
     if (newConfig.entities && Object.keys(newConfig.entities).length === 0) {
       delete newConfig.entities;
     }
@@ -490,9 +734,6 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
     fireEvent(this, 'config-changed', { config: this._config });
   }
 
-  /**
-   * Handler for warning settings form value changes
-   */
   private _warningFormValueChanged(ev: CustomEvent): void {
     ev.stopPropagation();
     if (!this._config || !this.hass) return;
@@ -505,10 +746,22 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
     }
 
     Object.entries(newData).forEach(([key, value]) => {
-      // Parse key like "warnings_wind_speed_enabled" into nested structure
       const parts = key.replace('warnings_', '').split('_');
-      const warningType = parts.slice(0, -1).join('_'); // e.g., "wind_speed", "rain_rate"
-      const property = parts[parts.length - 1]; // e.g., "enabled", "threshold"
+      
+      // Handle multi-word warning types like "rain_rate" or "wind_speed"
+      let warningType: string;
+      let property: string;
+      
+      if (parts[0] === 'rain' && parts[1] === 'rate') {
+        warningType = 'rain_rate';
+        property = parts.slice(2).join('_');
+      } else if (parts[0] === 'wind' && parts[1] === 'speed') {
+        warningType = 'wind_speed';
+        property = parts.slice(2).join('_');
+      } else {
+        warningType = parts[0];
+        property = parts.slice(1).join('_');
+      }
 
       if (!newConfig.warnings[warningType]) {
         newConfig.warnings[warningType] = {};
@@ -519,8 +772,6 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
     this._config = newConfig;
     fireEvent(this, 'config-changed', { config: this._config });
   }
-
-  // --- Auto Mode Entity Assignment Display ---
 
   private resolveAutoEntities(deviceId: string): Record<string, string | undefined> {
     const deviceEntities: Record<string, string> = {};
@@ -567,11 +818,13 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
 
     return html`
       <div class="auto-assignments">
-        <div class="auto-assignments-header">Entity Assignments</div>
-        <div class="auto-assignments-desc">
-          Automatically detected entities for each measurement. Override any assignment by selecting
-          a different entity.
+        <div class="auto-assignments-header">
+          <span>🔗 Entity Assignments</span>
+          <span class="assignment-count">
+            ${Object.values(autoResolved).filter(v => v).length} found
+          </span>
         </div>
+        
         ${Object.entries(ENTITY_LABELS).map(([key, label]) => {
           const autoEntity = autoResolved[key];
           const override = (overrides as Record<string, string | undefined>)[key];
@@ -580,26 +833,28 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
           const isNotFound = !effectiveEntity;
 
           return html`
-            <div class="assignment-row">
+            <div class="assignment-row ${isNotFound ? 'not-found' : ''} ${isOverridden ? 'overridden' : ''}">
               <div class="assignment-header">
                 <span class="assignment-label">${label}</span>
                 ${isOverridden
-                  ? html`<span class="assignment-badge override">Override</span>`
+                  ? html`<span class="badge override">Override</span>`
                   : isNotFound
-                    ? html`<span class="assignment-badge not-found">Not found</span>`
-                    : html`<span class="assignment-badge auto">Auto</span>`}
+                    ? html`<span class="badge not-found">Not found</span>`
+                    : html`<span class="badge auto">Auto</span>`}
               </div>
               <ha-form
                 .hass=${this.hass}
                 .data=${{ [`entities_${key}`]: effectiveEntity }}
                 .schema=${[{ name: `entities_${key}`, selector: { entity: { domain: 'sensor' } } }]}
-                .computeLabel=${() => 'Entity for ' + label}
+                .computeLabel=${() => ''}
                 @value-changed=${this._formValueChanged}
               ></ha-form>
               ${isOverridden
-                ? html`<button class="reset-btn" @click=${() => this._clearOverride(key)}>
-                    Reset to auto
-                  </button>`
+                ? html`
+                    <button class="reset-btn" @click=${() => this._clearOverride(key)}>
+                      Reset to auto
+                    </button>
+                  `
                 : nothing}
             </div>
           `;
@@ -608,9 +863,6 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
     `;
   }
 
-  /**
-   * Clear an entity override in auto mode, resetting to auto-detection.
-   */
   private _clearOverride(key: string): void {
     const newConfig = JSON.parse(JSON.stringify(this._config));
     if (newConfig.entities) {
@@ -626,18 +878,55 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
   static get styles(): CSSResultGroup {
     return css`
       .card-config {
-        padding: 16px;
+        padding: 0;
       }
 
-      h3 {
-        margin: 24px 0 12px 0;
-        font-size: 18px;
-        font-weight: 600;
+      /* Tabs */
+      .tabs {
+        display: flex;
+        gap: 4px;
+        padding: 8px;
+        background: var(--secondary-background-color, #f5f5f5);
+        border-radius: 12px;
+        margin-bottom: 16px;
+      }
+
+      .tab {
+        flex: 1;
+        padding: 10px 12px;
+        border: none;
+        background: transparent;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--secondary-text-color, #666);
+        transition: all 0.2s;
+      }
+
+      .tab:hover {
+        background: rgba(0, 0, 0, 0.05);
         color: var(--primary-text-color);
       }
 
-      h3:first-child {
-        margin-top: 0;
+      .tab.active {
+        background: var(--primary-color, #03a9f4);
+        color: white;
+      }
+
+      /* Sections */
+      .section {
+        margin-bottom: 24px;
+      }
+
+      h3 {
+        margin: 0 0 16px 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--primary-text-color);
+        display: flex;
+        align-items: center;
+        gap: 8px;
       }
 
       h4 {
@@ -647,115 +936,152 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
         color: var(--secondary-text-color);
       }
 
-      .input-group,
-      .switch-group {
-        margin-bottom: 16px;
-      }
-
-      label {
+      /* Info Box */
+      .info-box {
         display: flex;
-        flex-direction: column;
-        gap: 4px;
-        font-size: 14px;
-        color: var(--primary-text-color);
-      }
-
-      .switch-group label {
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
-      }
-
-      input[type='text'],
-      input[type='number'],
-      select {
-        width: 100%;
-        padding: 8px;
-        border: 1px solid var(--divider-color);
-        border-radius: 4px;
-        background: var(--card-background-color);
-        color: var(--primary-text-color);
-        font-size: 14px;
-        box-sizing: border-box;
-      }
-
-      input[type='checkbox'] {
-        width: 40px;
-        height: 20px;
-      }
-
-      input:focus,
-      select:focus {
-        outline: none;
-        border-color: var(--primary-color);
-      }
-
-      .warning-settings {
-        margin-left: 16px;
-        padding-left: 16px;
-        border-left: 2px solid var(--divider-color);
-      }
-
-      .entity-mode-info {
+        align-items: flex-start;
+        gap: 10px;
         padding: 12px;
         margin-bottom: 16px;
         background: var(--secondary-background-color, #f5f5f5);
-        border-radius: 4px;
-        font-size: 14px;
+        border-radius: 8px;
+        font-size: 13px;
         color: var(--secondary-text-color, #666);
         border-left: 3px solid var(--primary-color, #03a9f4);
       }
 
-      .loading {
+      .info-box.warning {
+        border-left-color: var(--warning-color, #ff9800);
+      }
+
+      .info-icon {
+        font-size: 16px;
+        flex-shrink: 0;
+      }
+
+      /* Mode Preview */
+      .mode-preview {
+        margin-bottom: 16px;
+      }
+
+      .preview-card {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        border-radius: 12px;
         padding: 16px;
+        color: white;
+      }
+
+      .preview-header {
+        font-weight: 600;
+        margin-bottom: 12px;
         font-size: 14px;
-        color: var(--secondary-text-color, #666);
-        font-style: italic;
       }
 
-      .helper-text {
+      .preview-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+
+      .preview-metric {
+        background: rgba(0, 0, 0, 0.15);
+        padding: 8px 12px;
+        border-radius: 8px;
         font-size: 12px;
-        color: var(--secondary-text-color, #666);
-        margin-top: 4px;
-        font-style: italic;
       }
 
-      .manual-entities {
+      .preview-card.compact {
+        padding: 12px;
+      }
+
+      .preview-row {
+        display: flex;
+        justify-content: space-around;
+        font-size: 13px;
+      }
+
+      .preview-card.hero {
+        text-align: center;
+        padding: 24px;
+      }
+
+      .preview-hero-value {
+        font-size: 32px;
+        font-weight: 700;
+      }
+
+      .preview-hero-sub {
+        font-size: 12px;
+        opacity: 0.8;
+        margin-top: 4px;
+      }
+
+      .preview-card.minimal {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 16px;
+      }
+
+      /* Warning Settings */
+      .warning-settings {
         display: flex;
         flex-direction: column;
-        gap: 12px;
-        margin-top: 8px;
+        gap: 16px;
+        margin-top: 16px;
       }
 
-      /* HA picker spacing */
-      ha-device-picker,
-      ha-entity-picker {
-        display: block;
+      .warning-category {
+        padding: 16px;
+        background: var(--secondary-background-color, #f5f5f5);
+        border-radius: 12px;
       }
 
-      /* Auto-assignment section */
+      .warning-category h4 {
+        margin: 0 0 12px 0;
+      }
+
+      /* Auto Assignments */
       .auto-assignments {
         margin-top: 16px;
       }
 
       .auto-assignments-header {
-        font-size: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 14px;
         font-weight: 600;
         color: var(--primary-text-color);
-        margin-bottom: 4px;
+        margin-bottom: 12px;
       }
 
-      .auto-assignments-desc {
-        font-size: 13px;
-        color: var(--secondary-text-color, #666);
-        margin-bottom: 16px;
+      .assignment-count {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--secondary-text-color);
+        background: var(--secondary-background-color);
+        padding: 4px 10px;
+        border-radius: 12px;
       }
 
       .assignment-row {
-        margin-bottom: 12px;
+        margin-bottom: 8px;
         padding: 12px;
         background: var(--secondary-background-color, #f5f5f5);
-        border-radius: 8px;
+        border-radius: 10px;
+        transition: all 0.2s;
+      }
+
+      .assignment-row:hover {
+        background: var(--secondary-background-color, #eee);
+      }
+
+      .assignment-row.not-found {
+        border-left: 3px solid var(--error-color, #f44336);
+      }
+
+      .assignment-row.overridden {
+        border-left: 3px solid var(--warning-color, #ff9800);
       }
 
       .assignment-header {
@@ -766,44 +1092,44 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
       }
 
       .assignment-label {
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 500;
         color: var(--primary-text-color);
       }
 
-      .assignment-badge {
-        font-size: 11px;
+      .badge {
+        font-size: 10px;
         font-weight: 600;
-        padding: 2px 8px;
+        padding: 3px 8px;
         border-radius: 10px;
         text-transform: uppercase;
         letter-spacing: 0.3px;
       }
 
-      .assignment-badge.auto {
+      .badge.auto {
         background: var(--success-color, #4caf50);
         color: white;
       }
 
-      .assignment-badge.override {
+      .badge.override {
         background: var(--warning-color, #ff9800);
         color: white;
       }
 
-      .assignment-badge.not-found {
+      .badge.not-found {
         background: var(--error-color, #f44336);
         color: white;
       }
 
       .reset-btn {
         display: inline-block;
-        margin-top: 6px;
-        padding: 4px 12px;
+        margin-top: 8px;
+        padding: 6px 12px;
         font-size: 12px;
         color: var(--primary-color, #03a9f4);
-        background: none;
+        background: transparent;
         border: 1px solid var(--primary-color, #03a9f4);
-        border-radius: 4px;
+        border-radius: 6px;
         cursor: pointer;
         transition: all 0.2s;
       }
