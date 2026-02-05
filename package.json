@@ -1,6 +1,6 @@
 {
   "name": "weatherstation-card",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "An Ecowitt WS90 compatible UI card for Home Assistant Lovelace",
   "main": "dist/weatherstation-card.js",
   "scripts": {
