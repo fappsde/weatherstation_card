@@ -1,0 +1,103 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Update version in files
+        run: |
+          VERSION=${{ steps.get_version.outputs.VERSION }}
+          sed -i "s/CARD_VERSION = '[^']*'/CARD_VERSION = '$VERSION'/" src/const.ts
+          npm version $VERSION --no-git-tag-version
+
+      - name: Rebuild with new version
+        run: npm run build
+
+      - name: Create release archive
+        run: |
+          mkdir -p release
+          cp dist/weatherstation-card.js release/
+          cp hacs.json release/
+          cp info.md release/
+          cp README.md release/
+          cd release
+          zip -r ../weatherstation-card-${{ steps.get_version.outputs.VERSION }}.zip .
+          cd ..
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get the previous tag
+          PREV_TAG=$(git describe --abbrev=0 --tags $(git rev-list --tags --skip=1 --max-count=1) 2>/dev/null || echo "")
+
+          if [ -z "$PREV_TAG" ]; then
+            echo "First release"
+            CHANGELOG="Initial release"
+          else
+            CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s" --no-merges)
+          fi
+
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            weatherstation-card-${{ steps.get_version.outputs.VERSION }}.zip
+            dist/weatherstation-card.js
+          body: |
+            ## Changes
+            ${{ steps.changelog.outputs.CHANGELOG }}
+
+            ## Installation
+
+            ### HACS (Recommended)
+            1. Open HACS in your Home Assistant instance
+            2. Go to "Frontend"
+            3. Click "+" and search for "Weather Station Card"
+            4. Click "Install"
+
+            ### Manual
+            1. Download `weatherstation-card.js` from the assets below
+            2. Copy it to `<config>/www/weatherstation-card.js`
+            3. Add a resource reference in your Lovelace dashboard
+
+            ## What's Changed
+            Full Changelog: ${{ github.server_url }}/${{ github.repository }}/compare/${{ steps.changelog.outputs.PREV_TAG }}...v${{ steps.get_version.outputs.VERSION }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

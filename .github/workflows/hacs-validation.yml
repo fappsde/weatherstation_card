@@ -1,0 +1,53 @@
+name: HACS Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  hacs:
+    name: HACS Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: HACS validation
+        uses: hacs/action@main
+        with:
+          category: plugin
+
+  hassfest:
+    name: Hassfest Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check hacs.json
+        run: |
+          if [ ! -f "hacs.json" ]; then
+            echo "hacs.json not found!"
+            exit 1
+          fi
+          echo "hacs.json exists"
+
+      - name: Validate hacs.json
+        run: |
+          if ! jq empty hacs.json; then
+            echo "Invalid JSON in hacs.json"
+            exit 1
+          fi
+          echo "hacs.json is valid JSON"
+
+      - name: Check required fields
+        run: |
+          NAME=$(jq -r '.name' hacs.json)
+          RENDER=$(jq -r '.render_readme' hacs.json)
+          if [ "$NAME" == "null" ] || [ "$NAME" == "" ]; then
+            echo "Missing 'name' in hacs.json"
+            exit 1
+          fi
+          echo "hacs.json validation passed"
