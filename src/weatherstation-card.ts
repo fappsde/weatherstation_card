@@ -84,8 +84,65 @@ export class WeatherStationCard extends LitElement {
       return this.getDataFromIndividualEntities();
     }
 
-    // Auto mode: read from main weather entity
+    // Auto mode: use device or weather entity
+    if (this.config.device_id) {
+      return this.getDataFromDevice();
+    }
+
+    // Fallback to weather entity (backwards compatibility)
     return this.getDataFromWeatherEntity();
+  }
+
+  private getDataFromDevice(): WeatherData | null {
+    if (!this.config.device_id) {
+      return null;
+    }
+
+    // Find all entities belonging to this device
+    const deviceEntities: Record<string, string> = {};
+
+    Object.values(this.hass.states).forEach((state) => {
+      const entityId = state.entity_id;
+      const entityRegistry = this.hass.entities || {};
+      const entityEntry = Object.values(entityRegistry).find(
+        (entry: { entity_id?: string }) => entry.entity_id === entityId
+      ) as { device_id?: string } | undefined;
+
+      if (entityEntry?.device_id === this.config.device_id) {
+        // Map entities by their type/name
+        const entityName = entityId.split('.')[1].toLowerCase();
+        deviceEntities[entityName] = entityId;
+      }
+    });
+
+    const getEntityValue = (keywords: string[]): number | undefined => {
+      // Find entity matching any of the keywords
+      for (const keyword of keywords) {
+        for (const [name, entityId] of Object.entries(deviceEntities)) {
+          if (name.includes(keyword)) {
+            const entity = this.hass.states[entityId];
+            if (entity) {
+              const value = parseFloat(entity.state);
+              if (!isNaN(value)) return value;
+            }
+          }
+        }
+      }
+      return undefined;
+    };
+
+    return {
+      temperature: getEntityValue(['temperature', 'temp', 'outdoor_temp']),
+      humidity: getEntityValue(['humidity', 'humid']),
+      pressure: getEntityValue(['pressure', 'absolute_pressure', 'relative_pressure']),
+      wind_speed: getEntityValue(['wind_speed', 'windspeed']),
+      wind_direction: getEntityValue(['wind_direction', 'wind_bearing', 'winddirection']),
+      wind_gust: getEntityValue(['gust', 'wind_gust', 'gust_speed']),
+      rain: getEntityValue(['rain_total', 'daily_rain', 'rain']),
+      rain_rate: getEntityValue(['rain_rate', 'rainrate', 'rain_piezo']),
+      uv_index: getEntityValue(['uv_index', 'uvi', 'uv']),
+      solar_radiation: getEntityValue(['solar_radiation', 'solar', 'light']),
+    };
   }
 
   private getDataFromWeatherEntity(): WeatherData | null {
@@ -163,10 +220,17 @@ export class WeatherStationCard extends LitElement {
 
     const weatherData = this.getWeatherData();
     if (!weatherData) {
+      const errorMsg = this.config.device_id
+        ? `No data available from device`
+        : `Entity not available: ${this.config.entity || 'not configured'}`;
+
       return html`
         <ha-card>
           <div class="card-content">
-            <div class="error">Entity not available: ${this.config.entity}</div>
+            <div class="error">${errorMsg}</div>
+            <div class="error-hint">
+              Please check your configuration and ensure the device or entity exists.
+            </div>
           </div>
         </ha-card>
       `;
@@ -515,6 +579,13 @@ export class WeatherStationCard extends LitElement {
       .error {
         color: var(--error-color, #db4437);
         padding: 16px;
+        font-weight: 600;
+      }
+
+      .error-hint {
+        color: var(--secondary-text-color, #666);
+        padding: 0 16px 16px 16px;
+        font-size: 14px;
       }
 
       .weather-grid {

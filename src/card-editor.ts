@@ -30,15 +30,10 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
         ${entityMode === 'auto'
           ? html`
               <div class="entity-mode-info">
-                Select a weather device and the card will automatically use its standard entities.
+                Select your weather station device and the card will automatically discover and use
+                all its sensors.
               </div>
-              ${this.renderEntityPicker(
-                'Weather Entity',
-                'entity',
-                'weather',
-                true,
-                'Main weather entity from your Ecowitt device'
-              )}
+              ${this.renderDevicePicker()}
             `
           : html`
               <div class="entity-mode-info">
@@ -232,23 +227,35 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
     required: boolean = false,
     helperText?: string
   ): TemplateResult {
-    const value = this.getNestedValue(this._config, configKey);
+    const value = this.getNestedValue(this._config, configKey) as string;
+
+    // Get all entities and filter by domain if specified
+    const entities = Object.keys(this.hass.states)
+      .filter((entityId) => {
+        if (!domain) return true;
+        return entityId.startsWith(domain + '.');
+      })
+      .sort();
 
     return html`
       <div class="input-group">
         <label>
           ${label}${required ? '*' : ''}
           ${helperText ? html`<div class="helper-text">${helperText}</div>` : ''}
+          <select
+            .value=${value || ''}
+            .configKey=${configKey}
+            @change=${this._valueChanged}
+            ?required=${required}
+          >
+            <option value="">-- Select Entity --</option>
+            ${entities.map(
+              (entityId) => html`
+                <option value="${entityId}" ?selected=${value === entityId}>${entityId}</option>
+              `
+            )}
+          </select>
         </label>
-        <ha-entity-picker
-          .hass=${this.hass}
-          .value=${value}
-          .configKey=${configKey}
-          .includeDomains=${domain ? [domain] : undefined}
-          .required=${required}
-          @value-changed=${this._entityPickerChanged}
-          allow-custom-entity
-        ></ha-entity-picker>
       </div>
     `;
   }
@@ -330,6 +337,103 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
     `;
   }
 
+  private renderDevicePicker(): TemplateResult {
+    const deviceId = this._config.device_id;
+
+    // Get device registry from hass
+    const devices: Array<{ id: string; name: string }> = [];
+
+    // In Home Assistant, devices are accessed through hass.devices
+    // We need to iterate through entities and find their devices
+    const deviceMap = new Map<string, { name: string; entityCount: number }>();
+
+    Object.values(this.hass.states).forEach((state) => {
+      const entityId = state.entity_id;
+      // Get device_id from entity registry (if available)
+      const deviceRegistryEntry = Object.values(this.hass.entities || {}).find(
+        (entry: { entity_id?: string }) => entry.entity_id === entityId
+      ) as { device_id?: string } | undefined;
+
+      if (deviceRegistryEntry?.device_id) {
+        const devId = deviceRegistryEntry.device_id;
+        if (!deviceMap.has(devId)) {
+          // Get device info
+          const device = (this.hass.devices || {})[devId] as
+            | { name?: string; name_by_user?: string; model?: string }
+            | undefined;
+          if (device) {
+            const deviceName =
+              device.name_by_user || device.name || device.model || `Device ${devId.slice(0, 8)}`;
+            deviceMap.set(devId, { name: deviceName, entityCount: 1 });
+          }
+        } else {
+          const existing = deviceMap.get(devId)!;
+          deviceMap.set(devId, { ...existing, entityCount: existing.entityCount + 1 });
+        }
+      }
+    });
+
+    // Convert to array and sort by name
+    deviceMap.forEach((info, id) => {
+      devices.push({ id, name: `${info.name} (${info.entityCount} entities)` });
+    });
+    devices.sort((a, b) => a.name.localeCompare(b.name));
+
+    return html`
+      <div class="input-group">
+        <label>
+          Weather Station Device*
+          <div class="helper-text">Select your Ecowitt weather station or other weather device</div>
+          <select .value=${deviceId || ''} .configKey=${'device_id'} @change=${this._valueChanged}>
+            <option value="">-- Select Device --</option>
+            ${devices.map(
+              (device) => html`
+                <option value="${device.id}" ?selected=${deviceId === device.id}>
+                  ${device.name}
+                </option>
+              `
+            )}
+          </select>
+        </label>
+      </div>
+      ${deviceId ? this.renderDeviceInfo(deviceId) : ''}
+    `;
+  }
+
+  private renderDeviceInfo(deviceId: string): TemplateResult {
+    // Find entities belonging to this device
+    const deviceEntities: string[] = [];
+
+    Object.values(this.hass.states).forEach((state) => {
+      const entityId = state.entity_id;
+      const entityRegistryEntry = Object.values(this.hass.entities || {}).find(
+        (entry: { entity_id?: string }) => entry.entity_id === entityId
+      ) as { device_id?: string } | undefined;
+
+      if (entityRegistryEntry?.device_id === deviceId) {
+        deviceEntities.push(entityId);
+      }
+    });
+
+    if (deviceEntities.length === 0) {
+      return html``;
+    }
+
+    return html`
+      <div class="device-info">
+        <div class="device-info-header">Device Entities (${deviceEntities.length}):</div>
+        <div class="device-entities">
+          ${deviceEntities
+            .slice(0, 10)
+            .map((entityId) => html` <div class="device-entity">${entityId}</div> `)}
+          ${deviceEntities.length > 10
+            ? html`<div class="device-entity-more">...and ${deviceEntities.length - 10} more</div>`
+            : ''}
+        </div>
+      </div>
+    `;
+  }
+
   private getNestedValue(obj: Record<string, unknown>, path: string): unknown {
     return path.split('.').reduce((current, prop) => {
       if (current && typeof current === 'object') {
@@ -361,11 +465,14 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
       return;
     }
 
-    interface ConfigurableInput extends HTMLInputElement {
+    interface ConfigurableElement {
       configKey?: string;
+      type?: string;
+      value?: string;
+      checked?: boolean;
     }
 
-    const target = ev.target as ConfigurableInput;
+    const target = ev.target as ConfigurableElement;
     const configKey = target.configKey;
 
     if (!configKey) {
@@ -374,35 +481,12 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
 
     let value: string | number | boolean;
     if (target.type === 'checkbox') {
-      value = target.checked;
+      value = target.checked ?? false;
     } else if (target.type === 'number') {
-      value = parseFloat(target.value);
+      value = parseFloat(target.value ?? '0');
     } else {
-      value = target.value;
+      value = target.value ?? '';
     }
-
-    const newConfig = { ...this._config };
-    this.setNestedValue(newConfig, configKey, value);
-
-    this._config = newConfig;
-    fireEvent(this, 'config-changed', { config: this._config });
-  }
-
-  private _entityPickerChanged(ev: CustomEvent): void {
-    if (!this._config || !this.hass) {
-      return;
-    }
-
-    ev.stopPropagation();
-
-    const target = ev.target as HTMLElement & { configKey?: string };
-    const configKey = target.configKey;
-
-    if (!configKey) {
-      return;
-    }
-
-    const value = ev.detail.value;
 
     const newConfig = { ...this._config };
     this.setNestedValue(newConfig, configKey, value);
@@ -457,12 +541,14 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
       input[type='text'],
       input[type='number'],
       select {
+        width: 100%;
         padding: 8px;
         border: 1px solid var(--divider-color);
         border-radius: 4px;
         background: var(--card-background-color);
         color: var(--primary-text-color);
         font-size: 14px;
+        box-sizing: border-box;
       }
 
       input[type='checkbox'] {
@@ -506,8 +592,41 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
         margin-top: 8px;
       }
 
-      ha-entity-picker {
-        width: 100%;
+      .device-info {
+        margin-top: 16px;
+        padding: 12px;
+        background: var(--secondary-background-color, #f5f5f5);
+        border-radius: 4px;
+        border-left: 3px solid var(--success-color, #4caf50);
+      }
+
+      .device-info-header {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--primary-text-color);
+        margin-bottom: 8px;
+      }
+
+      .device-entities {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .device-entity {
+        font-size: 12px;
+        font-family: monospace;
+        color: var(--secondary-text-color);
+        padding: 2px 4px;
+        background: var(--card-background-color);
+        border-radius: 2px;
+      }
+
+      .device-entity-more {
+        font-size: 12px;
+        color: var(--secondary-text-color);
+        font-style: italic;
+        margin-top: 4px;
       }
     `;
   }

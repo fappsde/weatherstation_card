@@ -50,11 +50,11 @@ Add the card to your Lovelace dashboard:
 
 ```yaml
 type: custom:weatherstation-card
-entity: weather.home
 name: Weather Station
 
 # Entity Mode
-entity_mode: auto  # 'auto' for weather entity, 'manual' for individual sensors
+entity_mode: auto  # 'auto' for device-based discovery, 'manual' for individual sensors
+device_id: abc123  # Select your weather station device via card editor
 
 # Display Settings
 display_mode: normal  # or 'compact' for mobile
@@ -67,7 +67,8 @@ enable_warnings: true
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| `entity` | string | **Required** | Weather entity ID |
+| `entity_mode` | string | `auto` | `auto` (device) or `manual` (sensors) |
+| `device_id` | string | Recommended | Weather station device ID |
 | `name` | string | Optional | Card title |
 | `display_mode` | string | `normal` | `normal` or `compact` |
 | `data_view` | string | `live` | `live` or `history` |

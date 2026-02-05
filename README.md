@@ -70,13 +70,15 @@ entity: weather.home
 
 ### Full Configuration (Auto Mode - Recommended)
 
+Using device selection for automatic sensor discovery:
+
 ```yaml
 type: custom:weatherstation-card
-entity: weather.ecowitt_ws90
 name: Backyard Weather Station
 
 # Entity Mode (defaults to 'auto')
-entity_mode: auto  # 'auto' uses weather entity attributes, 'manual' for individual sensors
+entity_mode: auto  # 'auto' uses device-based auto-discovery, 'manual' for individual sensors
+device_id: abc123def456  # Your weather station device ID (selected via UI)
 
 # Display Settings
 display_mode: normal  # 'normal' or 'compact'
@@ -149,8 +151,9 @@ show_wind_arrows: true
 |------|------|---------|-------------|
 | `type` | string | **Required** | Must be `custom:weatherstation-card` |
 | **Entity Configuration** |
-| `entity_mode` | string | `auto` | Entity mode: `auto` (use weather entity) or `manual` (individual sensors) |
-| `entity` | string | **Required** (auto mode) | Weather entity ID from your Ecowitt integration |
+| `entity_mode` | string | `auto` | Entity mode: `auto` (device-based discovery) or `manual` (individual sensors) |
+| `device_id` | string | **Recommended** (auto mode) | Device ID for automatic sensor discovery (selected via card editor) |
+| `entity` | string | Optional (auto mode fallback) | Weather entity ID (used if device_id not set) |
 | `entities.temperature` | string | Optional | Temperature sensor entity (manual mode) |
 | `entities.humidity` | string | Optional | Humidity sensor entity (manual mode) |
 | `entities.pressure` | string | Optional | Pressure sensor entity (manual mode) |
