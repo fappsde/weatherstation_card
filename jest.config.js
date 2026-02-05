@@ -22,6 +22,10 @@ module.exports = {
     },
   },
   moduleFileExtensions: ['ts', 'js', 'json'],
+  moduleNameMapper: {
+    // Mock icons module to avoid ESM issues with lit in Jest
+    '^\\./icons$': '<rootDir>/src/__tests__/__mocks__/icons.ts',
+  },
   transform: {
     '^.+\\.ts$': [
       'ts-jest',

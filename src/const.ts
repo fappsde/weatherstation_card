@@ -32,24 +32,24 @@ export const DEFAULT_CONFIG = {
     wind_speed: {
       enabled: false,
       threshold: 50,
-      message: '⚠️ High wind speed! Consider closing shades and securing outdoor items.',
+      message: 'High wind speed! Consider closing shades and securing outdoor items.',
     },
     temperature: {
       enabled: false,
       high_threshold: 35,
       low_threshold: 0,
-      message_high: '🌡️ High temperature! Stay hydrated and avoid direct sunlight.',
-      message_low: '❄️ Low temperature! Watch for frost and freezing conditions.',
+      message_high: 'High temperature! Stay hydrated and avoid direct sunlight.',
+      message_low: 'Low temperature! Watch for frost and freezing conditions.',
     },
     uv: {
       enabled: false,
       threshold: 8,
-      message: '☀️ Very high UV index! Use sun protection and limit outdoor exposure.',
+      message: 'Very high UV index! Use sun protection and limit outdoor exposure.',
     },
     rain_rate: {
       enabled: false,
       threshold: 10,
-      message: '🌧️ Heavy rain! Check for flooding and secure outdoor items.',
+      message: 'Heavy rain! Check for flooding and secure outdoor items.',
     },
   },
 };
@@ -125,22 +125,6 @@ export const ENTITY_LABELS: Record<string, string> = {
   dew_point: 'Dew Point',
   uv_index: 'UV Index',
   solar_radiation: 'Solar Radiation',
-};
-
-// Metric icons using modern emoji/icons
-export const METRIC_ICONS: Record<string, string> = {
-  temperature: '🌡️',
-  humidity: '💧',
-  pressure: '📊',
-  wind_speed: '💨',
-  wind_direction: '🧭',
-  wind_gust: '🌬️',
-  rain: '🌧️',
-  rain_rate: '⛈️',
-  uv_index: '☀️',
-  solar_radiation: '🌤️',
-  feels_like: '🤒',
-  dew_point: '💦',
 };
 
 // Color themes for different conditions and times

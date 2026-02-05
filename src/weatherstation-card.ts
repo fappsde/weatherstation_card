@@ -14,9 +14,17 @@ import {
   CARD_VERSION,
   DEFAULT_CONFIG,
   ENTITY_KEYWORDS,
-  METRIC_ICONS,
   CONDITION_ICONS,
 } from './const';
+import {
+  METRIC_ICONS_SVG,
+  iconDefault,
+  iconAlert,
+  iconBolt,
+  iconChart,
+  iconHumidity,
+  iconWindSpeed,
+} from './icons';
 import {
   formatTemperature,
   formatSpeed,
@@ -423,7 +431,7 @@ export class WeatherStationCard extends LitElement {
     return html`
       <ha-card class="weather-card error-card">
         <div class="error-content">
-          <div class="error-icon">⚠️</div>
+          <div class="error-icon">${iconAlert}</div>
           <div class="error-message">${errorMsg}</div>
           <div class="error-hint">${hintMsg}</div>
         </div>
@@ -473,14 +481,14 @@ export class WeatherStationCard extends LitElement {
           @click=${() => this.setDataView('live')}
           title="Live Data"
         >
-          <span class="btn-icon">⚡</span>
+          <span class="btn-icon">${iconBolt}</span>
         </button>
         <button
           class="toggle-btn ${this.currentDataView === 'history' ? 'active' : ''}"
           @click=${() => this.setDataView('history')}
           title="History"
         >
-          <span class="btn-icon">📊</span>
+          <span class="btn-icon">${iconChart}</span>
         </button>
       </div>
     `;
@@ -532,7 +540,7 @@ export class WeatherStationCard extends LitElement {
     return html`
       <div class="hero-layout">
         <div class="hero-main">
-          <div class="hero-icon">${METRIC_ICONS[heroMetric] || '🌡️'}</div>
+          <div class="hero-icon">${METRIC_ICONS_SVG[heroMetric] || iconDefault}</div>
           <div class="hero-value">
             ${heroValue !== undefined ? formatMetricValue(heroValue, heroMetric) : '--'}
           </div>
@@ -639,7 +647,7 @@ export class WeatherStationCard extends LitElement {
     return html`
       <div class="minimal-layout">
         <div class="minimal-primary">
-          <span class="minimal-icon">${METRIC_ICONS.temperature}</span>
+          <span class="minimal-icon">${METRIC_ICONS_SVG.temperature}</span>
           <span class="minimal-value">${formatTemperature(weatherData.temperature || 0)}</span>
           ${this.trends.get('temperature')
             ? html`<trend-indicator
@@ -651,10 +659,10 @@ export class WeatherStationCard extends LitElement {
         </div>
         <div class="minimal-secondary">
           ${weatherData.humidity !== undefined
-            ? html`<span class="minimal-stat">💧 ${weatherData.humidity}%</span>`
+            ? html`<span class="minimal-stat">${iconHumidity} ${weatherData.humidity}%</span>`
             : ''}
           ${weatherData.wind_speed !== undefined
-            ? html`<span class="minimal-stat">💨 ${formatSpeed(weatherData.wind_speed)}</span>`
+            ? html`<span class="minimal-stat">${iconWindSpeed} ${formatSpeed(weatherData.wind_speed)}</span>`
             : ''}
         </div>
       </div>
@@ -670,7 +678,7 @@ export class WeatherStationCard extends LitElement {
     const trend = this.trends.get(metric);
     const history = this.historyData.get(metric);
     const isExpanded = this.expandedMetric === metric;
-    const icon = METRIC_ICONS[metric] || '📊';
+    const icon = METRIC_ICONS_SVG[metric] || iconDefault;
 
     return html`
       <div
@@ -741,7 +749,7 @@ export class WeatherStationCard extends LitElement {
     if (value === undefined) return html``;
 
     const trend = this.trends.get(metric);
-    const icon = METRIC_ICONS[metric] || '📊';
+    const icon = METRIC_ICONS_SVG[metric] || iconDefault;
 
     return html`
       <div class="compact-metric">
@@ -767,7 +775,7 @@ export class WeatherStationCard extends LitElement {
     return html`
       <div class="metric-card wind-card">
         <div class="metric-header">
-          <span class="metric-icon">${METRIC_ICONS.wind_speed}</span>
+          <span class="metric-icon">${METRIC_ICONS_SVG.wind_speed}</span>
           <span class="metric-label">Wind</span>
         </div>
 
@@ -812,7 +820,7 @@ export class WeatherStationCard extends LitElement {
     return html`
       <div class="metric-card uv-card">
         <div class="metric-header">
-          <span class="metric-icon">${METRIC_ICONS.uv_index}</span>
+          <span class="metric-icon">${METRIC_ICONS_SVG.uv_index}</span>
           <span class="metric-label">UV Index</span>
         </div>
 
@@ -861,7 +869,7 @@ export class WeatherStationCard extends LitElement {
             ([metric, data]) => html`
               <div class="history-metric">
                 <div class="history-metric-header">
-                  <span class="metric-icon">${METRIC_ICONS[metric] || '📊'}</span>
+                  <span class="metric-icon">${METRIC_ICONS_SVG[metric] || iconDefault}</span>
                   <span class="metric-label">${this.getMetricLabel(metric)}</span>
                   ${this.renderMinMax(metric, data)}
                 </div>
@@ -878,7 +886,7 @@ export class WeatherStationCard extends LitElement {
           ${this.historyData.size === 0
             ? html`
                 <div class="history-empty">
-                  <span class="empty-icon">📊</span>
+                  <span class="empty-icon">${iconChart}</span>
                   <span class="empty-text">Loading history data...</span>
                 </div>
               `
@@ -1053,6 +1061,9 @@ export class WeatherStationCard extends LitElement {
       }
       .btn-icon {
         font-size: 1rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
       }
 
       /* Warnings */
@@ -1105,6 +1116,9 @@ export class WeatherStationCard extends LitElement {
 
       .warning-icon {
         font-size: 1.2rem;
+        display: inline-flex;
+        align-items: center;
+        flex-shrink: 0;
       }
       .warning-text {
         font-size: 0.85rem;
@@ -1159,6 +1173,9 @@ export class WeatherStationCard extends LitElement {
 
       .metric-icon {
         font-size: 1.2rem;
+        display: inline-flex;
+        align-items: center;
+        opacity: 0.85;
       }
 
       .metric-label {
@@ -1283,6 +1300,9 @@ export class WeatherStationCard extends LitElement {
 
       .compact-icon {
         font-size: 1.1rem;
+        display: inline-flex;
+        align-items: center;
+        opacity: 0.85;
       }
 
       .compact-info {
@@ -1313,6 +1333,10 @@ export class WeatherStationCard extends LitElement {
 
       .hero-icon {
         font-size: 2.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.85;
       }
 
       .hero-value {
@@ -1343,6 +1367,9 @@ export class WeatherStationCard extends LitElement {
 
       .minimal-icon {
         font-size: 1.4rem;
+        display: inline-flex;
+        align-items: center;
+        opacity: 0.85;
       }
 
       .minimal-value {
@@ -1433,6 +1460,10 @@ export class WeatherStationCard extends LitElement {
 
       .empty-icon {
         font-size: 2.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.6;
       }
       .empty-text {
         font-size: 0.9rem;
@@ -1455,6 +1486,10 @@ export class WeatherStationCard extends LitElement {
 
       .error-icon {
         font-size: 2.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.7;
       }
       .error-message {
         font-size: 1rem;

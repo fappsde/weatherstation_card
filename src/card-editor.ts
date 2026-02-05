@@ -3,6 +3,12 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant, fireEvent, LovelaceCardEditor } from 'custom-card-helpers';
 import { WeatherStationCardConfig, HomeAssistantExtended } from './types';
 import { ENTITY_KEYWORDS, ENTITY_LABELS } from './const';
+import {
+  iconChart, iconAppearance, iconBolt, iconAlert,
+  iconPlug, iconLightbulb, iconGear, iconEye, iconFrame,
+  iconEdit, iconSparkle, iconTrend, iconCalendar, iconBell,
+  iconTemperature, iconHumidity, iconWindSpeed, iconRain, iconUV,
+} from './icons';
 
 // Schema type for ha-form
 interface HaFormSchema {
@@ -280,10 +286,10 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
 
   private renderTabs(): TemplateResult {
     const tabs = [
-      { id: 'data', label: '📊 Data', icon: '📊' },
-      { id: 'appearance', label: '🎨 Appearance', icon: '🎨' },
-      { id: 'features', label: '⚡ Features', icon: '⚡' },
-      { id: 'warnings', label: '⚠️ Warnings', icon: '⚠️' },
+      { id: 'data', label: html`${iconChart} Data`, icon: iconChart },
+      { id: 'appearance', label: html`${iconAppearance} Appearance`, icon: iconAppearance },
+      { id: 'features', label: html`${iconBolt} Features`, icon: iconBolt },
+      { id: 'warnings', label: html`${iconAlert} Warnings`, icon: iconAlert },
     ] as const;
 
     return html`
@@ -308,7 +314,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
 
     return html`
       <div class="section">
-        <h3>🔌 Data Source</h3>
+        <h3>${iconPlug} Data Source</h3>
         <ha-form
           .hass=${this.hass}
           .data=${data}
@@ -320,7 +326,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
         ${entityMode === 'auto'
           ? html`
               <div class="info-box">
-                <span class="info-icon">💡</span>
+                <span class="info-icon">${iconLightbulb}</span>
                 <span>Select your weather station device and sensors will be auto-discovered.</span>
               </div>
               <ha-form
@@ -334,7 +340,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
             `
           : html`
               <div class="info-box">
-                <span class="info-icon">⚙️</span>
+                <span class="info-icon">${iconGear}</span>
                 <span>Manually select individual sensor entities for each measurement.</span>
               </div>
               <ha-form
@@ -348,7 +354,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
       </div>
 
       <div class="section">
-        <h3>📝 General</h3>
+        <h3>${iconEdit} General</h3>
         <ha-form
           .hass=${this.hass}
           .data=${data}
@@ -359,7 +365,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
       </div>
 
       <div class="section">
-        <h3>👁️ Visible Sensors</h3>
+        <h3>${iconEye} Visible Sensors</h3>
         <ha-form
           .hass=${this.hass}
           .data=${data}
@@ -376,7 +382,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
 
     return html`
       <div class="section">
-        <h3>🖼️ Display Mode</h3>
+        <h3>${iconFrame} Display Mode</h3>
         <div class="mode-preview">${this.renderModePreview()}</div>
         <ha-form
           .hass=${this.hass}
@@ -400,7 +406,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
       </div>
 
       <div class="section">
-        <h3>🎨 Card Style</h3>
+        <h3>${iconAppearance} Card Style</h3>
         <ha-form
           .hass=${this.hass}
           .data=${data}
@@ -411,7 +417,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
       </div>
 
       <div class="section">
-        <h3>✨ Animations</h3>
+        <h3>${iconSparkle} Animations</h3>
         <ha-form
           .hass=${this.hass}
           .data=${data}
@@ -431,19 +437,19 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
         <div class="preview-card">
           <div class="preview-header">Weather Station</div>
           <div class="preview-grid">
-            <div class="preview-metric">🌡️ 22°C</div>
-            <div class="preview-metric">💧 65%</div>
-            <div class="preview-metric">💨 15 km/h</div>
-            <div class="preview-metric">🌧️ 0 mm</div>
+            <div class="preview-metric">${iconTemperature} 22°C</div>
+            <div class="preview-metric">${iconHumidity} 65%</div>
+            <div class="preview-metric">${iconWindSpeed} 15 km/h</div>
+            <div class="preview-metric">${iconRain} 0 mm</div>
           </div>
         </div>
       `,
       compact: html`
         <div class="preview-card compact">
           <div class="preview-row">
-            <span>🌡️ 22°C</span>
-            <span>💧 65%</span>
-            <span>💨 15</span>
+            <span>${iconTemperature} 22°C</span>
+            <span>${iconHumidity} 65%</span>
+            <span>${iconWindSpeed} 15</span>
           </div>
         </div>
       `,
@@ -455,8 +461,8 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
       `,
       minimal: html`
         <div class="preview-card minimal">
-          <span>🌡️ 22°C</span>
-          <span>💧 65%</span>
+          <span>${iconTemperature} 22°C</span>
+          <span>${iconHumidity} 65%</span>
         </div>
       `,
     };
@@ -469,9 +475,9 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
 
     return html`
       <div class="section">
-        <h3>📈 Trends & History</h3>
+        <h3>${iconTrend} Trends & History</h3>
         <div class="info-box">
-          <span class="info-icon">📊</span>
+          <span class="info-icon">${iconChart}</span>
           <span
             >Trends show how values have changed. Sparklines display mini charts of recent
             history.</span
@@ -500,7 +506,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
       </div>
 
       <div class="section">
-        <h3>📅 Default View</h3>
+        <h3>${iconCalendar} Default View</h3>
         <ha-form
           .hass=${this.hass}
           .data=${data}
@@ -528,9 +534,9 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
 
     return html`
       <div class="section">
-        <h3>⚠️ Weather Warnings</h3>
+        <h3>${iconAlert} Weather Warnings</h3>
         <div class="info-box warning">
-          <span class="info-icon">🔔</span>
+          <span class="info-icon">${iconBell}</span>
           <span>Get alerted when weather conditions exceed thresholds you set.</span>
         </div>
         <ha-form
@@ -623,7 +629,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
     return html`
       <div class="warning-settings">
         <div class="warning-category">
-          <h4>💨 Wind Speed</h4>
+          <h4>${iconWindSpeed} Wind Speed</h4>
           <ha-form
             .hass=${this.hass}
             .data=${warningsData}
@@ -645,7 +651,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
         </div>
 
         <div class="warning-category">
-          <h4>🌡️ Temperature</h4>
+          <h4>${iconTemperature} Temperature</h4>
           <ha-form
             .hass=${this.hass}
             .data=${warningsData}
@@ -667,7 +673,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
         </div>
 
         <div class="warning-category">
-          <h4>☀️ UV Index</h4>
+          <h4>${iconUV} UV Index</h4>
           <ha-form
             .hass=${this.hass}
             .data=${warningsData}
@@ -689,7 +695,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
         </div>
 
         <div class="warning-category">
-          <h4>🌧️ Rain Rate</h4>
+          <h4>${iconRain} Rain Rate</h4>
           <ha-form
             .hass=${this.hass}
             .data=${warningsData}
@@ -829,7 +835,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
     return html`
       <div class="auto-assignments">
         <div class="auto-assignments-header">
-          <span>🔗 Entity Assignments</span>
+          <span>${iconPlug} Entity Assignments</span>
           <span class="assignment-count">
             ${Object.values(autoResolved).filter((v) => v).length} found
           </span>
@@ -916,6 +922,10 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
         font-weight: 500;
         color: var(--secondary-text-color, #666);
         transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
       }
 
       .tab:hover {
@@ -971,6 +981,8 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
       .info-icon {
         font-size: 16px;
         flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
       }
 
       /* Mode Preview */
@@ -1002,6 +1014,9 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
         padding: 8px 12px;
         border-radius: 8px;
         font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
       }
 
       .preview-card.compact {
@@ -1012,6 +1027,13 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
         display: flex;
         justify-content: space-around;
         font-size: 13px;
+      }
+
+      .preview-row span,
+      .preview-card.minimal span {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
       }
 
       .preview-card.hero {

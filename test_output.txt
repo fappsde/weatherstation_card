@@ -1,0 +1,100 @@
+FAIL src/__tests__/const.test.ts (12.743 s)
+  Constants
+    Card metadata
+      × should have correct card version (46 ms)
+      √ should have correct card name
+    Default config
+      √ should have all display options enabled by default (3 ms)
+    Wind directions
+      √ should have 16 directions (4 ms)
+      √ should start with North (1 ms)
+      √ should include cardinal directions (2 ms)
+    UV levels
+      √ should have 5 UV levels
+      √ should have correct structure (10 ms)
+      √ should be in ascending order (4 ms)
+
+  ● Constants › Card metadata › should have correct card version
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "1.0.0"
+    Received: "2.0.0"
+
+    [0m [90m 4 |[39m   describe([32m'Card metadata'[39m[33m,[39m () [33m=>[39m {
+     [90m 5 |[39m     it([32m'should have correct card version'[39m[33m,[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 6 |[39m       expect([33mCARD_VERSION[39m)[33m.[39mtoBe([32m'1.0.0'[39m)[33m;[39m
+     [90m   |[39m                            [31m[1m^[22m[39m
+     [90m 7 |[39m     })[33m;[39m
+     [90m 8 |[39m
+     [90m 9 |[39m     it([32m'should have correct card name'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.<anonymous> (src/__tests__/const.test.ts:6:28)
+
+PASS src/__tests__/warnings.test.ts (12.833 s)
+  Warning System
+    Wind Speed Warnings
+      √ should trigger wind speed warning when threshold exceeded (35 ms)
+      √ should not trigger when disabled (2 ms)
+      √ should have high severity when threshold exceeded by 50% (5 ms)
+    Temperature Warnings
+      √ should trigger high temperature warning (2 ms)
+      √ should trigger low temperature warning (6 ms)
+    UV Index Warnings
+      √ should trigger UV warning when threshold exceeded (1 ms)
+    Rain Rate Warnings
+      √ should trigger rain rate warning (1 ms)
+    Multiple Warnings
+      √ should trigger multiple warnings when multiple conditions met (3 ms)
+    No Warnings
+      √ should return empty array when no config provided (3 ms)
+      √ should return empty array when all warnings disabled (1 ms)
+
+PASS src/__tests__/utils.test.ts (13 s)
+  Utils
+    getWindDirection
+      √ should return correct wind direction for North (27 ms)
+      √ should return correct wind direction for East (1 ms)
+      √ should return correct wind direction for South (1 ms)
+      √ should return correct wind direction for West (1 ms)
+      √ should handle intermediate directions (2 ms)
+    getUVLevel
+      √ should return Low for UV index 0-2 (1 ms)
+      √ should return Moderate for UV index 3-5 (1 ms)
+      √ should return High for UV index 6-7 (1 ms)
+      √ should return Very High for UV index 8-10 (1 ms)
+      √ should return Extreme for UV index > 10 (1 ms)
+      √ should return correct colors (2 ms)
+    formatTemperature
+      √ should format temperature with default unit
+      √ should round to one decimal place (1 ms)
+      √ should handle custom units
+    formatPressure
+      √ should format pressure with default unit (1 ms)
+      √ should round to nearest integer
+      √ should handle custom units (1 ms)
+    formatSpeed
+      √ should format speed with default unit (1 ms)
+      √ should round to one decimal place
+      √ should handle custom units (1 ms)
+    formatRain
+      √ should format rain with default unit (2 ms)
+      √ should round to two decimal places (1 ms)
+      √ should handle custom units
+    formatDate
+      √ should format a date with month, day, hour, minute (46 ms)
+    formatShortDate
+      √ should format a date with month and day only (1 ms)
+    getWindDirectionDegrees
+      √ should return degrees for cardinal directions (1 ms)
+      √ should return degrees for intermediate directions (1 ms)
+      √ should return 0 for unknown direction (1 ms)
+    degreesToRadians
+      √ should convert degrees to radians (1 ms)
+
+Test Suites: 1 failed, 2 passed, 3 total
+Tests:       1 failed, 47 passed, 48 total
+Snapshots:   0 total
+Time:        19.987 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

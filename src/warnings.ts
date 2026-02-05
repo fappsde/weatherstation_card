@@ -1,4 +1,5 @@
 import { Warning, WarningConfig, WeatherData } from './types';
+import { iconWindSpeed, iconTemperature, iconSnowflake, iconUV, iconRain } from './icons';
 
 export function checkWarnings(weatherData: WeatherData, warningConfig?: WarningConfig): Warning[] {
   if (!warningConfig) {
@@ -19,7 +20,7 @@ export function checkWarnings(weatherData: WeatherData, warningConfig?: WarningC
         weatherData.wind_speed >= warningConfig.wind_speed.threshold * 1.5 ? 'high' : 'medium',
       message:
         warningConfig.wind_speed.message || `High wind speed: ${weatherData.wind_speed} km/h`,
-      icon: '💨',
+      icon: iconWindSpeed,
     });
   }
 
@@ -38,7 +39,7 @@ export function checkWarnings(weatherData: WeatherData, warningConfig?: WarningC
         message:
           warningConfig.temperature.message_high ||
           `High temperature: ${weatherData.temperature}°C`,
-        icon: '🌡️',
+        icon: iconTemperature,
       });
     }
 
@@ -54,7 +55,7 @@ export function checkWarnings(weatherData: WeatherData, warningConfig?: WarningC
             : 'medium',
         message:
           warningConfig.temperature.message_low || `Low temperature: ${weatherData.temperature}°C`,
-        icon: '❄️',
+        icon: iconSnowflake,
       });
     }
   }
@@ -69,7 +70,7 @@ export function checkWarnings(weatherData: WeatherData, warningConfig?: WarningC
       type: 'uv',
       severity: weatherData.uv_index >= 11 ? 'high' : 'medium',
       message: warningConfig.uv.message || `High UV index: ${weatherData.uv_index}`,
-      icon: '☀️',
+      icon: iconUV,
     });
   }
 
@@ -83,7 +84,7 @@ export function checkWarnings(weatherData: WeatherData, warningConfig?: WarningC
       type: 'rain',
       severity: weatherData.rain_rate >= warningConfig.rain_rate.threshold * 2 ? 'high' : 'medium',
       message: warningConfig.rain_rate.message || `Heavy rain: ${weatherData.rain_rate} mm/h`,
-      icon: '🌧️',
+      icon: iconRain,
     });
   }
 

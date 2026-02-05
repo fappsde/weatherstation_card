@@ -222,11 +222,13 @@ export interface HistoricalData {
   data: WeatherData;
 }
 
+import { TemplateResult } from 'lit';
+
 export interface Warning {
   type: 'wind' | 'temperature' | 'uv' | 'rain';
   severity: 'low' | 'medium' | 'high';
   message: string;
-  icon: string;
+  icon: TemplateResult;
 }
 
 export interface UVLevel {
