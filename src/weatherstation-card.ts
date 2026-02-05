@@ -1,7 +1,7 @@
 import { LitElement, html, css, CSSResultGroup, TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant, LovelaceCardEditor } from 'custom-card-helpers';
-import { WeatherStationCardConfig, WeatherData, Warning } from './types';
+import { WeatherStationCardConfig, WeatherData, Warning, HomeAssistantExtended } from './types';
 import { CARD_VERSION, DEFAULT_CONFIG, ENTITY_KEYWORDS } from './const';
 import { formatTemperature, formatPressure, formatSpeed, formatRain, getUVLevel } from './utils';
 import { checkWarnings } from './warnings';
@@ -45,7 +45,7 @@ export class WeatherStationCard extends LitElement {
     return document.createElement('weatherstation-card-editor') as LovelaceCardEditor;
   }
 
-  public static getStubConfig(): WeatherStationCardConfig {
+  public static getStubConfig(): Partial<WeatherStationCardConfig> {
     return {
       type: 'custom:weatherstation-card',
       entity: '',
@@ -55,8 +55,8 @@ export class WeatherStationCard extends LitElement {
   }
 
   public setConfig(config: WeatherStationCardConfig): void {
-    if (!config.entity) {
-      throw new Error('You need to define an entity');
+    if (!config) {
+      throw new Error('Invalid configuration');
     }
 
     this.config = {
@@ -101,15 +101,16 @@ export class WeatherStationCard extends LitElement {
     // Find all entities belonging to this device
     const deviceEntities: Record<string, string> = {};
 
+    const hass = this.hass as HomeAssistantExtended;
+    const entityRegistry = hass.entities || {};
+
     Object.values(this.hass.states).forEach((state) => {
       const entityId = state.entity_id;
-      const entityRegistry = this.hass.entities || {};
       const entityEntry = Object.values(entityRegistry).find(
-        (entry: { entity_id?: string }) => entry.entity_id === entityId
-      ) as { device_id?: string } | undefined;
+        (entry) => entry.entity_id === entityId
+      );
 
       if (entityEntry?.device_id === this.config.device_id) {
-        // Map entities by their type/name
         const entityName = entityId.split('.')[1].toLowerCase();
         deviceEntities[entityName] = entityId;
       }
@@ -231,17 +232,24 @@ export class WeatherStationCard extends LitElement {
 
     const weatherData = this.getWeatherData();
     if (!weatherData) {
-      const errorMsg = this.config.device_id
-        ? `No data available from device`
-        : `Entity not available: ${this.config.entity || 'not configured'}`;
+      let errorMsg: string;
+      let hintMsg: string;
+      if (this.config.device_id) {
+        errorMsg = 'No data available from device';
+        hintMsg = 'Please check your configuration and ensure the device exists.';
+      } else if (this.config.entity) {
+        errorMsg = `Entity not available: ${this.config.entity}`;
+        hintMsg = 'Please check your configuration and ensure the entity exists.';
+      } else {
+        errorMsg = 'No device or entity configured';
+        hintMsg = 'Open the card editor and select a device or entity.';
+      }
 
       return html`
         <ha-card>
           <div class="card-content">
             <div class="error">${errorMsg}</div>
-            <div class="error-hint">
-              Please check your configuration and ensure the device or entity exists.
-            </div>
+            <div class="error-hint">${hintMsg}</div>
           </div>
         </ha-card>
       `;
