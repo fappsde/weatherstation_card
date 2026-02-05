@@ -23,26 +23,37 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
    * Trigger loading via card helpers so they're available in our shadow DOM.
    */
   private async _loadHaElements(): Promise<void> {
-    if (customElements.get('ha-entity-picker')) {
+    // Check if both pickers are already available
+    if (customElements.get('ha-entity-picker') && customElements.get('ha-device-picker')) {
       this._haElementsLoaded = true;
+      this.requestUpdate();
       return;
     }
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const helpers = await (window as any).loadCardHelpers?.();
-      helpers?.createCardElement?.({ type: 'entities', entities: [] });
+      if (helpers) {
+        // Create multiple card types to ensure all required elements are loaded
+        await helpers.createCardElement({ type: 'entities', entities: [] });
+        // Also try creating a humidifier card which often loads device pickers
+        await helpers.createCardElement({ type: 'humidifier', entity: 'humidifier.dummy' }).catch(() => {});
+      }
     } catch {
       // Elements may already be available
     }
 
-    // Wait for elements to be defined (with timeout fallback)
+    // Wait for both elements to be defined (with timeout fallback)
     await Promise.race([
-      customElements.whenDefined('ha-entity-picker'),
-      new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+      Promise.all([
+        customElements.whenDefined('ha-entity-picker'),
+        customElements.whenDefined('ha-device-picker'),
+      ]),
+      new Promise<void>((resolve) => setTimeout(resolve, 5000)),
     ]);
 
     this._haElementsLoaded = true;
+    this.requestUpdate();
   }
 
   protected render(): TemplateResult {
@@ -260,6 +271,9 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
   // --- HA Native Pickers ---
 
   private renderDevicePicker(): TemplateResult {
+    if (!customElements.get('ha-device-picker')) {
+      return html`<div class="loading">Loading device picker...</div>`;
+    }
     return html`
       <ha-device-picker
         .hass=${this.hass}
@@ -267,12 +281,16 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
         .label=${'Weather Station Device'}
         .configValue=${'device_id'}
         @value-changed=${this._haValueChanged}
+        allow-custom-entity
       ></ha-device-picker>
       ${this._config.device_id ? this.renderAutoAssignments() : ''}
     `;
   }
 
   private renderManualEntityPickers(): TemplateResult {
+    if (!customElements.get('ha-entity-picker')) {
+      return html`<div class="loading">Loading entity pickers...</div>`;
+    }
     return html`
       <div class="manual-entities">
         ${Object.entries(ENTITY_LABELS).map(([key, label]) => {
@@ -282,7 +300,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
               .hass=${this.hass}
               .value=${value}
               .label=${label}
-              .includeDomains=${['sensor']}
+              include-domains="sensor"
               .configValue=${'entities.' + key}
               @value-changed=${this._haValueChanged}
               allow-custom-entity
@@ -366,7 +384,7 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
                 .hass=${this.hass}
                 .value=${effectiveEntity}
                 .label=${'Entity for ' + label}
-                .includeDomains=${['sensor']}
+                include-domains="sensor"
                 .configValue=${'entities.' + key}
                 @value-changed=${this._haValueChanged}
                 allow-custom-entity
