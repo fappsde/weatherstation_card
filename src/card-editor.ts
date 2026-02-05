@@ -8,9 +8,41 @@ import { ENTITY_KEYWORDS, ENTITY_LABELS } from './const';
 export class WeatherStationCardEditor extends LitElement implements LovelaceCardEditor {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: WeatherStationCardConfig;
+  @state() private _haElementsLoaded = false;
 
   public setConfig(config: WeatherStationCardConfig): void {
     this._config = config;
+  }
+
+  protected firstUpdated(): void {
+    this._loadHaElements();
+  }
+
+  /**
+   * HA form elements (ha-entity-picker, ha-device-picker) are lazy-loaded.
+   * Trigger loading via card helpers so they're available in our shadow DOM.
+   */
+  private async _loadHaElements(): Promise<void> {
+    if (customElements.get('ha-entity-picker')) {
+      this._haElementsLoaded = true;
+      return;
+    }
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const helpers = await (window as any).loadCardHelpers?.();
+      helpers?.createCardElement?.({ type: 'entities', entities: [] });
+    } catch {
+      // Elements may already be available
+    }
+
+    // Wait for elements to be defined (with timeout fallback)
+    await Promise.race([
+      customElements.whenDefined('ha-entity-picker'),
+      new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+    ]);
+
+    this._haElementsLoaded = true;
   }
 
   protected render(): TemplateResult {
@@ -34,13 +66,17 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
                 Select your weather station device and the card will automatically discover and use
                 all its sensors.
               </div>
-              ${this.renderDevicePicker()}
+              ${this._haElementsLoaded
+                ? this.renderDevicePicker()
+                : html`<div class="loading">Loading selectors...</div>`}
             `
           : html`
               <div class="entity-mode-info">
                 Select individual sensor entities for each measurement.
               </div>
-              ${this.renderManualEntityPickers()}
+              ${this._haElementsLoaded
+                ? this.renderManualEntityPickers()
+                : html`<div class="loading">Loading selectors...</div>`}
             `}
 
         <h3>General Settings</h3>
@@ -536,6 +572,13 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
         font-size: 14px;
         color: var(--secondary-text-color, #666);
         border-left: 3px solid var(--primary-color, #03a9f4);
+      }
+
+      .loading {
+        padding: 16px;
+        font-size: 14px;
+        color: var(--secondary-text-color, #666);
+        font-style: italic;
       }
 
       .helper-text {
