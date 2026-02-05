@@ -232,23 +232,35 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
     required: boolean = false,
     helperText?: string
   ): TemplateResult {
-    const value = this.getNestedValue(this._config, configKey);
+    const value = this.getNestedValue(this._config, configKey) as string;
+
+    // Get all entities and filter by domain if specified
+    const entities = Object.keys(this.hass.states)
+      .filter((entityId) => {
+        if (!domain) return true;
+        return entityId.startsWith(domain + '.');
+      })
+      .sort();
 
     return html`
       <div class="input-group">
         <label>
           ${label}${required ? '*' : ''}
           ${helperText ? html`<div class="helper-text">${helperText}</div>` : ''}
+          <select
+            .value=${value || ''}
+            .configKey=${configKey}
+            @change=${this._valueChanged}
+            ?required=${required}
+          >
+            <option value="">-- Select Entity --</option>
+            ${entities.map(
+              (entityId) => html`
+                <option value="${entityId}" ?selected=${value === entityId}>${entityId}</option>
+              `
+            )}
+          </select>
         </label>
-        <ha-entity-picker
-          .hass=${this.hass}
-          .value=${value}
-          .configKey=${configKey}
-          .includeDomains=${domain ? [domain] : undefined}
-          .required=${required}
-          @value-changed=${this._entityPickerChanged}
-          allow-custom-entity
-        ></ha-entity-picker>
       </div>
     `;
   }
@@ -361,11 +373,14 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
       return;
     }
 
-    interface ConfigurableInput extends HTMLInputElement {
+    interface ConfigurableElement {
       configKey?: string;
+      type?: string;
+      value?: string;
+      checked?: boolean;
     }
 
-    const target = ev.target as ConfigurableInput;
+    const target = ev.target as ConfigurableElement;
     const configKey = target.configKey;
 
     if (!configKey) {
@@ -374,35 +389,12 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
 
     let value: string | number | boolean;
     if (target.type === 'checkbox') {
-      value = target.checked;
+      value = target.checked ?? false;
     } else if (target.type === 'number') {
-      value = parseFloat(target.value);
+      value = parseFloat(target.value ?? '0');
     } else {
-      value = target.value;
+      value = target.value ?? '';
     }
-
-    const newConfig = { ...this._config };
-    this.setNestedValue(newConfig, configKey, value);
-
-    this._config = newConfig;
-    fireEvent(this, 'config-changed', { config: this._config });
-  }
-
-  private _entityPickerChanged(ev: CustomEvent): void {
-    if (!this._config || !this.hass) {
-      return;
-    }
-
-    ev.stopPropagation();
-
-    const target = ev.target as HTMLElement & { configKey?: string };
-    const configKey = target.configKey;
-
-    if (!configKey) {
-      return;
-    }
-
-    const value = ev.detail.value;
 
     const newConfig = { ...this._config };
     this.setNestedValue(newConfig, configKey, value);
@@ -457,12 +449,14 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
       input[type='text'],
       input[type='number'],
       select {
+        width: 100%;
         padding: 8px;
         border: 1px solid var(--divider-color);
         border-radius: 4px;
         background: var(--card-background-color);
         color: var(--primary-text-color);
         font-size: 14px;
+        box-sizing: border-box;
       }
 
       input[type='checkbox'] {
@@ -504,10 +498,6 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
         flex-direction: column;
         gap: 12px;
         margin-top: 8px;
-      }
-
-      ha-entity-picker {
-        width: 100%;
       }
     `;
   }
