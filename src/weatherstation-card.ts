@@ -73,7 +73,23 @@ export class WeatherStationCard extends LitElement {
   }
 
   private getWeatherData(): WeatherData | null {
-    if (!this.hass || !this.config.entity) {
+    if (!this.hass) {
+      return null;
+    }
+
+    const entityMode = this.config.entity_mode || 'auto';
+
+    if (entityMode === 'manual' && this.config.entities) {
+      // Manual mode: read from individual entities
+      return this.getDataFromIndividualEntities();
+    }
+
+    // Auto mode: read from main weather entity
+    return this.getDataFromWeatherEntity();
+  }
+
+  private getDataFromWeatherEntity(): WeatherData | null {
+    if (!this.config.entity) {
       return null;
     }
 
@@ -97,6 +113,33 @@ export class WeatherStationCard extends LitElement {
       solar_radiation: entity.attributes.solar_radiation,
       feels_like: entity.attributes.feels_like,
       dew_point: entity.attributes.dew_point,
+    };
+  }
+
+  private getDataFromIndividualEntities(): WeatherData | null {
+    if (!this.config.entities) {
+      return null;
+    }
+
+    const getEntityValue = (entityId?: string): number | undefined => {
+      if (!entityId) return undefined;
+      const entity = this.hass.states[entityId];
+      if (!entity) return undefined;
+      const value = parseFloat(entity.state);
+      return isNaN(value) ? undefined : value;
+    };
+
+    return {
+      temperature: getEntityValue(this.config.entities.temperature),
+      humidity: getEntityValue(this.config.entities.humidity),
+      pressure: getEntityValue(this.config.entities.pressure),
+      wind_speed: getEntityValue(this.config.entities.wind_speed),
+      wind_direction: getEntityValue(this.config.entities.wind_direction),
+      wind_gust: getEntityValue(this.config.entities.wind_gust),
+      rain: getEntityValue(this.config.entities.rain),
+      rain_rate: getEntityValue(this.config.entities.rain_rate),
+      uv_index: getEntityValue(this.config.entities.uv_index),
+      solar_radiation: getEntityValue(this.config.entities.solar_radiation),
     };
   }
 

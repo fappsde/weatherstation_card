@@ -52,6 +52,11 @@ Add the card to your Lovelace dashboard:
 type: custom:weatherstation-card
 entity: weather.home
 name: Weather Station
+
+# Entity Mode
+entity_mode: auto  # 'auto' for weather entity, 'manual' for individual sensors
+
+# Display Settings
 display_mode: normal  # or 'compact' for mobile
 data_view: live       # or 'history' for charts
 show_wind_arrows: true

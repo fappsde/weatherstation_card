@@ -2,7 +2,7 @@ import { LovelaceCardConfig } from 'custom-card-helpers';
 
 export interface WeatherStationCardConfig extends LovelaceCardConfig {
   type: string;
-  entity: string;
+  entity: string; // Primary entity (for backwards compatibility) or main weather entity
   name?: string;
   show_temperature?: boolean;
   show_humidity?: boolean;
@@ -12,6 +12,24 @@ export interface WeatherStationCardConfig extends LovelaceCardConfig {
   show_uv?: boolean;
   show_solar?: boolean;
   theme?: string;
+
+  // Entity selection mode
+  entity_mode?: 'auto' | 'manual'; // auto = use device, manual = individual entities
+  device_id?: string; // For auto mode
+
+  // Individual entity overrides (for manual mode or overriding auto mode)
+  entities?: {
+    temperature?: string;
+    humidity?: string;
+    pressure?: string;
+    wind_speed?: string;
+    wind_direction?: string;
+    wind_gust?: string;
+    rain?: string;
+    rain_rate?: string;
+    uv_index?: string;
+    solar_radiation?: string;
+  };
 
   // Display mode
   display_mode?: 'normal' | 'compact';
