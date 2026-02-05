@@ -1,59 +1,202 @@
-import { LitElement, html, css, CSSResultGroup, TemplateResult } from 'lit';
+import { LitElement, html, css, CSSResultGroup, TemplateResult, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant, fireEvent, LovelaceCardEditor } from 'custom-card-helpers';
 import { WeatherStationCardConfig, HomeAssistantExtended } from './types';
 import { ENTITY_KEYWORDS, ENTITY_LABELS } from './const';
 
+// Schema type for ha-form
+interface HaFormSchema {
+  name: string;
+  selector?: Record<string, unknown>;
+  type?: string;
+  schema?: HaFormSchema[];
+  default?: unknown;
+}
+
+// Define schemas as constants (not recreated on each render)
+const ENTITY_MODE_SCHEMA: HaFormSchema[] = [
+  {
+    name: 'entity_mode',
+    selector: {
+      select: {
+        options: [
+          { value: 'auto', label: 'Auto (Use Device)' },
+          { value: 'manual', label: 'Manual (Select Individual Entities)' },
+        ],
+        mode: 'dropdown',
+      },
+    },
+  },
+];
+
+const DEVICE_PICKER_SCHEMA: HaFormSchema[] = [
+  {
+    name: 'device_id',
+    selector: { device: {} },
+  },
+];
+
+const GENERAL_SETTINGS_SCHEMA: HaFormSchema[] = [
+  {
+    name: 'name',
+    selector: { text: {} },
+  },
+];
+
+const DISPLAY_MODE_SCHEMA: HaFormSchema[] = [
+  {
+    name: 'display_mode',
+    selector: {
+      select: {
+        options: [
+          { value: 'normal', label: 'Normal' },
+          { value: 'compact', label: 'Compact' },
+        ],
+        mode: 'dropdown',
+      },
+    },
+  },
+];
+
+const DATA_VIEW_SCHEMA: HaFormSchema[] = [
+  {
+    name: 'data_view',
+    selector: {
+      select: {
+        options: [
+          { value: 'live', label: 'Live Data' },
+          { value: 'history', label: 'Historical Data' },
+        ],
+        mode: 'dropdown',
+      },
+    },
+  },
+];
+
+const HISTORY_PERIOD_SCHEMA: HaFormSchema[] = [
+  {
+    name: 'history_period',
+    selector: {
+      select: {
+        options: [
+          { value: 'day', label: 'Day' },
+          { value: 'week', label: 'Week' },
+          { value: 'month', label: 'Month' },
+          { value: 'year', label: 'Year' },
+        ],
+        mode: 'dropdown',
+      },
+    },
+  },
+];
+
+const VISIBLE_SENSORS_SCHEMA: HaFormSchema[] = [
+  { name: 'show_temperature', selector: { boolean: {} } },
+  { name: 'show_humidity', selector: { boolean: {} } },
+  { name: 'show_pressure', selector: { boolean: {} } },
+  { name: 'show_wind', selector: { boolean: {} } },
+  { name: 'show_wind_arrows', selector: { boolean: {} } },
+  { name: 'show_rain', selector: { boolean: {} } },
+  { name: 'show_uv', selector: { boolean: {} } },
+  { name: 'show_solar', selector: { boolean: {} } },
+];
+
+const WARNINGS_TOGGLE_SCHEMA: HaFormSchema[] = [
+  { name: 'enable_warnings', selector: { boolean: {} } },
+];
+
+// Generate entity picker schema from ENTITY_LABELS
+const ENTITY_PICKER_SCHEMA: HaFormSchema[] = Object.keys(ENTITY_LABELS).map((key) => ({
+  name: `entities_${key}`,
+  selector: { entity: { domain: 'sensor' } },
+}));
+
 @customElement('weatherstation-card-editor')
 export class WeatherStationCardEditor extends LitElement implements LovelaceCardEditor {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: WeatherStationCardConfig;
-  @state() private _haElementsLoaded = false;
 
   public setConfig(config: WeatherStationCardConfig): void {
     this._config = config;
   }
 
-  protected firstUpdated(): void {
-    this._loadHaElements();
+  public connectedCallback(): void {
+    super.connectedCallback();
+    void this._loadHaForm();
   }
 
   /**
-   * HA form elements (ha-entity-picker, ha-device-picker) are lazy-loaded.
-   * Trigger loading via card helpers so they're available in our shadow DOM.
+   * Load ha-form component using the recommended approach.
    */
-  private async _loadHaElements(): Promise<void> {
-    // Check if both pickers are already available
-    if (customElements.get('ha-entity-picker') && customElements.get('ha-device-picker')) {
-      this._haElementsLoaded = true;
-      this.requestUpdate();
-      return;
+  private async _loadHaForm(): Promise<void> {
+    if (customElements.get('ha-form')) return;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const helpers = await (window as any).loadCardHelpers?.();
+    if (!helpers) return;
+
+    // Creating a card element triggers loading of ha-form
+    const card = await helpers.createCardElement({ type: 'entity', entity: 'sun.sun' });
+    if (card) {
+      await card.getConfigElement?.();
+    }
+  }
+
+  private _computeLabel = (schema: HaFormSchema): string => {
+    const labels: Record<string, string> = {
+      device_id: 'Weather Station Device',
+      name: 'Card Name',
+      entity_mode: 'Entity Mode',
+      display_mode: 'Display Mode',
+      data_view: 'Data View',
+      history_period: 'History Period',
+      show_temperature: 'Show Temperature',
+      show_humidity: 'Show Humidity',
+      show_pressure: 'Show Pressure',
+      show_wind: 'Show Wind',
+      show_wind_arrows: 'Show Wind Direction Arrows',
+      show_rain: 'Show Rain',
+      show_uv: 'Show UV Index',
+      show_solar: 'Show Solar Radiation',
+      enable_warnings: 'Enable Warnings',
+      // Entity labels with underscore format
+      ...Object.fromEntries(
+        Object.entries(ENTITY_LABELS).map(([key, label]) => [`entities_${key}`, label])
+      ),
+    };
+    return labels[schema.name] || schema.name;
+  };
+
+  /**
+   * Convert config to flat data object for ha-form
+   */
+  private _getFormData(): Record<string, unknown> {
+    const data: Record<string, unknown> = {
+      entity_mode: this._config.entity_mode || 'auto',
+      device_id: this._config.device_id || '',
+      name: this._config.name || '',
+      display_mode: this._config.display_mode || 'normal',
+      data_view: this._config.data_view || 'live',
+      history_period: this._config.history_period || 'day',
+      show_temperature: this._config.show_temperature !== false,
+      show_humidity: this._config.show_humidity !== false,
+      show_pressure: this._config.show_pressure !== false,
+      show_wind: this._config.show_wind !== false,
+      show_wind_arrows: this._config.show_wind_arrows !== false,
+      show_rain: this._config.show_rain !== false,
+      show_uv: this._config.show_uv !== false,
+      show_solar: this._config.show_solar !== false,
+      enable_warnings: this._config.enable_warnings || false,
+    };
+
+    // Flatten entities with underscore separator
+    if (this._config.entities) {
+      Object.entries(this._config.entities).forEach(([key, value]) => {
+        data[`entities_${key}`] = value || '';
+      });
     }
 
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const helpers = await (window as any).loadCardHelpers?.();
-      if (helpers) {
-        // Create multiple card types to ensure all required elements are loaded
-        await helpers.createCardElement({ type: 'entities', entities: [] });
-        // Also try creating a humidifier card which often loads device pickers
-        await helpers.createCardElement({ type: 'humidifier', entity: 'humidifier.dummy' }).catch(() => {});
-      }
-    } catch {
-      // Elements may already be available
-    }
-
-    // Wait for both elements to be defined (with timeout fallback)
-    await Promise.race([
-      Promise.all([
-        customElements.whenDefined('ha-entity-picker'),
-        customElements.whenDefined('ha-device-picker'),
-      ]),
-      new Promise<void>((resolve) => setTimeout(resolve, 5000)),
-    ]);
-
-    this._haElementsLoaded = true;
-    this.requestUpdate();
+    return data;
   }
 
   protected render(): TemplateResult {
@@ -61,254 +204,320 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
       return html``;
     }
 
+    const data = this._getFormData();
     const entityMode = this._config.entity_mode || 'auto';
 
     return html`
       <div class="card-config">
         <h3>Entity Configuration</h3>
+        <ha-form
+          .hass=${this.hass}
+          .data=${data}
+          .schema=${ENTITY_MODE_SCHEMA}
+          .computeLabel=${this._computeLabel}
+          @value-changed=${this._formValueChanged}
+        ></ha-form>
 
-        ${this.renderSelect('Entity Mode', 'entity_mode', [
-          { value: 'auto', label: 'Auto (Use Device)' },
-          { value: 'manual', label: 'Manual (Select Individual Entities)' },
-        ])}
         ${entityMode === 'auto'
           ? html`
               <div class="entity-mode-info">
                 Select your weather station device and the card will automatically discover and use
                 all its sensors.
               </div>
-              ${this._haElementsLoaded
-                ? this.renderDevicePicker()
-                : html`<div class="loading">Loading selectors...</div>`}
+              <ha-form
+                .hass=${this.hass}
+                .data=${data}
+                .schema=${DEVICE_PICKER_SCHEMA}
+                .computeLabel=${this._computeLabel}
+                @value-changed=${this._formValueChanged}
+              ></ha-form>
+              ${this._config.device_id ? this.renderAutoAssignments() : nothing}
             `
           : html`
               <div class="entity-mode-info">
                 Select individual sensor entities for each measurement.
               </div>
-              ${this._haElementsLoaded
-                ? this.renderManualEntityPickers()
-                : html`<div class="loading">Loading selectors...</div>`}
+              <ha-form
+                .hass=${this.hass}
+                .data=${data}
+                .schema=${ENTITY_PICKER_SCHEMA}
+                .computeLabel=${this._computeLabel}
+                @value-changed=${this._formValueChanged}
+              ></ha-form>
             `}
 
         <h3>General Settings</h3>
-        ${this.renderInput('Card Name', 'name', 'text', false)}
+        <ha-form
+          .hass=${this.hass}
+          .data=${data}
+          .schema=${GENERAL_SETTINGS_SCHEMA}
+          .computeLabel=${this._computeLabel}
+          @value-changed=${this._formValueChanged}
+        ></ha-form>
 
         <h3>Display Mode</h3>
-        ${this.renderSelect('Display Mode', 'display_mode', [
-          { value: 'normal', label: 'Normal' },
-          { value: 'compact', label: 'Compact' },
-        ])}
+        <ha-form
+          .hass=${this.hass}
+          .data=${data}
+          .schema=${DISPLAY_MODE_SCHEMA}
+          .computeLabel=${this._computeLabel}
+          @value-changed=${this._formValueChanged}
+        ></ha-form>
 
         <h3>Data View</h3>
-        ${this.renderSelect('Data View', 'data_view', [
-          { value: 'live', label: 'Live Data' },
-          { value: 'history', label: 'Historical Data' },
-        ])}
+        <ha-form
+          .hass=${this.hass}
+          .data=${data}
+          .schema=${DATA_VIEW_SCHEMA}
+          .computeLabel=${this._computeLabel}
+          @value-changed=${this._formValueChanged}
+        ></ha-form>
         ${this._config.data_view === 'history'
-          ? this.renderSelect('History Period', 'history_period', [
-              { value: 'day', label: 'Day' },
-              { value: 'week', label: 'Week' },
-              { value: 'month', label: 'Month' },
-              { value: 'year', label: 'Year' },
-            ])
-          : ''}
+          ? html`
+              <ha-form
+                .hass=${this.hass}
+                .data=${data}
+                .schema=${HISTORY_PERIOD_SCHEMA}
+                .computeLabel=${this._computeLabel}
+                @value-changed=${this._formValueChanged}
+              ></ha-form>
+            `
+          : nothing}
 
         <h3>Visible Sensors</h3>
-        ${this.renderSwitch('Show Temperature', 'show_temperature')}
-        ${this.renderSwitch('Show Humidity', 'show_humidity')}
-        ${this.renderSwitch('Show Pressure', 'show_pressure')}
-        ${this.renderSwitch('Show Wind', 'show_wind')}
-        ${this._config.show_wind
-          ? this.renderSwitch('Show Wind Direction Arrows', 'show_wind_arrows')
-          : ''}
-        ${this.renderSwitch('Show Rain', 'show_rain')}
-        ${this.renderSwitch('Show UV Index', 'show_uv')}
-        ${this.renderSwitch('Show Solar Radiation', 'show_solar')}
+        <ha-form
+          .hass=${this.hass}
+          .data=${data}
+          .schema=${VISIBLE_SENSORS_SCHEMA}
+          .computeLabel=${this._computeLabel}
+          @value-changed=${this._formValueChanged}
+        ></ha-form>
 
         <h3>Warnings</h3>
-        ${this.renderSwitch('Enable Warnings', 'enable_warnings')}
-        ${this._config.enable_warnings ? this.renderWarningSettings() : ''}
+        <ha-form
+          .hass=${this.hass}
+          .data=${data}
+          .schema=${WARNINGS_TOGGLE_SCHEMA}
+          .computeLabel=${this._computeLabel}
+          @value-changed=${this._formValueChanged}
+        ></ha-form>
+        ${this._config.enable_warnings ? this.renderWarningSettings() : nothing}
       </div>
     `;
   }
 
   private renderWarningSettings(): TemplateResult {
+    const warningSchemas = {
+      wind_speed: [
+        { name: 'warnings_wind_speed_enabled', selector: { boolean: {} } },
+        { name: 'warnings_wind_speed_threshold', selector: { number: { min: 0, unit_of_measurement: 'km/h' } } },
+        { name: 'warnings_wind_speed_message', selector: { text: {} } },
+      ],
+      temperature: [
+        { name: 'warnings_temperature_enabled', selector: { boolean: {} } },
+        { name: 'warnings_temperature_high_threshold', selector: { number: { unit_of_measurement: '°C' } } },
+        { name: 'warnings_temperature_low_threshold', selector: { number: { unit_of_measurement: '°C' } } },
+        { name: 'warnings_temperature_message_high', selector: { text: {} } },
+        { name: 'warnings_temperature_message_low', selector: { text: {} } },
+      ],
+      uv: [
+        { name: 'warnings_uv_enabled', selector: { boolean: {} } },
+        { name: 'warnings_uv_threshold', selector: { number: { min: 0, max: 15 } } },
+        { name: 'warnings_uv_message', selector: { text: {} } },
+      ],
+      rain_rate: [
+        { name: 'warnings_rain_rate_enabled', selector: { boolean: {} } },
+        { name: 'warnings_rain_rate_threshold', selector: { number: { min: 0, unit_of_measurement: 'mm/h' } } },
+        { name: 'warnings_rain_rate_message', selector: { text: {} } },
+      ],
+    };
+
+    const warningLabels: Record<string, string> = {
+      warnings_wind_speed_enabled: 'Enable Wind Speed Warning',
+      warnings_wind_speed_threshold: 'Threshold (km/h)',
+      warnings_wind_speed_message: 'Warning Message',
+      warnings_temperature_enabled: 'Enable Temperature Warning',
+      warnings_temperature_high_threshold: 'High Threshold (°C)',
+      warnings_temperature_low_threshold: 'Low Threshold (°C)',
+      warnings_temperature_message_high: 'High Temperature Message',
+      warnings_temperature_message_low: 'Low Temperature Message',
+      warnings_uv_enabled: 'Enable UV Warning',
+      warnings_uv_threshold: 'Threshold',
+      warnings_uv_message: 'Warning Message',
+      warnings_rain_rate_enabled: 'Enable Rain Rate Warning',
+      warnings_rain_rate_threshold: 'Threshold (mm/h)',
+      warnings_rain_rate_message: 'Warning Message',
+    };
+
+    const warningsData: Record<string, unknown> = {
+      warnings_wind_speed_enabled: this._config.warnings?.wind_speed?.enabled || false,
+      warnings_wind_speed_threshold: this._config.warnings?.wind_speed?.threshold || 50,
+      warnings_wind_speed_message: this._config.warnings?.wind_speed?.message || '',
+      warnings_temperature_enabled: this._config.warnings?.temperature?.enabled || false,
+      warnings_temperature_high_threshold: this._config.warnings?.temperature?.high_threshold || 35,
+      warnings_temperature_low_threshold: this._config.warnings?.temperature?.low_threshold || 0,
+      warnings_temperature_message_high: this._config.warnings?.temperature?.message_high || '',
+      warnings_temperature_message_low: this._config.warnings?.temperature?.message_low || '',
+      warnings_uv_enabled: this._config.warnings?.uv?.enabled || false,
+      warnings_uv_threshold: this._config.warnings?.uv?.threshold || 8,
+      warnings_uv_message: this._config.warnings?.uv?.message || '',
+      warnings_rain_rate_enabled: this._config.warnings?.rain_rate?.enabled || false,
+      warnings_rain_rate_threshold: this._config.warnings?.rain_rate?.threshold || 10,
+      warnings_rain_rate_message: this._config.warnings?.rain_rate?.message || '',
+    };
+
+    const computeWarningLabel = (schema: HaFormSchema): string => warningLabels[schema.name] || schema.name;
+
     return html`
       <div class="warning-settings">
         <h4>Wind Speed Warning</h4>
-        ${this.renderSwitch('Enable', 'warnings.wind_speed.enabled')}
+        <ha-form
+          .hass=${this.hass}
+          .data=${warningsData}
+          .schema=${[warningSchemas.wind_speed[0]]}
+          .computeLabel=${computeWarningLabel}
+          @value-changed=${this._warningFormValueChanged}
+        ></ha-form>
         ${this._config.warnings?.wind_speed?.enabled
           ? html`
-              ${this.renderInput(
-                'Threshold (km/h)',
-                'warnings.wind_speed.threshold',
-                'number',
-                false
-              )}
-              ${this.renderInput('Message', 'warnings.wind_speed.message', 'text', false)}
+              <ha-form
+                .hass=${this.hass}
+                .data=${warningsData}
+                .schema=${warningSchemas.wind_speed.slice(1)}
+                .computeLabel=${computeWarningLabel}
+                @value-changed=${this._warningFormValueChanged}
+              ></ha-form>
             `
-          : ''}
+          : nothing}
 
         <h4>Temperature Warning</h4>
-        ${this.renderSwitch('Enable', 'warnings.temperature.enabled')}
+        <ha-form
+          .hass=${this.hass}
+          .data=${warningsData}
+          .schema=${[warningSchemas.temperature[0]]}
+          .computeLabel=${computeWarningLabel}
+          @value-changed=${this._warningFormValueChanged}
+        ></ha-form>
         ${this._config.warnings?.temperature?.enabled
           ? html`
-              ${this.renderInput(
-                'High Threshold (°C)',
-                'warnings.temperature.high_threshold',
-                'number',
-                false
-              )}
-              ${this.renderInput(
-                'Low Threshold (°C)',
-                'warnings.temperature.low_threshold',
-                'number',
-                false
-              )}
-              ${this.renderInput(
-                'High Message',
-                'warnings.temperature.message_high',
-                'text',
-                false
-              )}
-              ${this.renderInput('Low Message', 'warnings.temperature.message_low', 'text', false)}
+              <ha-form
+                .hass=${this.hass}
+                .data=${warningsData}
+                .schema=${warningSchemas.temperature.slice(1)}
+                .computeLabel=${computeWarningLabel}
+                @value-changed=${this._warningFormValueChanged}
+              ></ha-form>
             `
-          : ''}
+          : nothing}
 
         <h4>UV Index Warning</h4>
-        ${this.renderSwitch('Enable', 'warnings.uv.enabled')}
+        <ha-form
+          .hass=${this.hass}
+          .data=${warningsData}
+          .schema=${[warningSchemas.uv[0]]}
+          .computeLabel=${computeWarningLabel}
+          @value-changed=${this._warningFormValueChanged}
+        ></ha-form>
         ${this._config.warnings?.uv?.enabled
           ? html`
-              ${this.renderInput('Threshold', 'warnings.uv.threshold', 'number', false)}
-              ${this.renderInput('Message', 'warnings.uv.message', 'text', false)}
+              <ha-form
+                .hass=${this.hass}
+                .data=${warningsData}
+                .schema=${warningSchemas.uv.slice(1)}
+                .computeLabel=${computeWarningLabel}
+                @value-changed=${this._warningFormValueChanged}
+              ></ha-form>
             `
-          : ''}
+          : nothing}
 
         <h4>Rain Rate Warning</h4>
-        ${this.renderSwitch('Enable', 'warnings.rain_rate.enabled')}
+        <ha-form
+          .hass=${this.hass}
+          .data=${warningsData}
+          .schema=${[warningSchemas.rain_rate[0]]}
+          .computeLabel=${computeWarningLabel}
+          @value-changed=${this._warningFormValueChanged}
+        ></ha-form>
         ${this._config.warnings?.rain_rate?.enabled
           ? html`
-              ${this.renderInput(
-                'Threshold (mm/h)',
-                'warnings.rain_rate.threshold',
-                'number',
-                false
-              )}
-              ${this.renderInput('Message', 'warnings.rain_rate.message', 'text', false)}
+              <ha-form
+                .hass=${this.hass}
+                .data=${warningsData}
+                .schema=${warningSchemas.rain_rate.slice(1)}
+                .computeLabel=${computeWarningLabel}
+                @value-changed=${this._warningFormValueChanged}
+              ></ha-form>
             `
-          : ''}
+          : nothing}
       </div>
     `;
   }
 
-  private renderInput(
-    label: string,
-    configKey: string,
-    type: string,
-    required: boolean
-  ): TemplateResult {
-    const value = this.getNestedValue(this._config, configKey);
+  /**
+   * Unified handler for main form value changes
+   */
+  private _formValueChanged(ev: CustomEvent): void {
+    ev.stopPropagation();
+    if (!this._config || !this.hass) return;
 
-    return html`
-      <div class="input-group">
-        <label>
-          ${label}${required ? '*' : ''}
-          <input
-            type="${type}"
-            .value=${value || ''}
-            .configKey=${configKey}
-            @input=${this._valueChanged}
-            ?required=${required}
-          />
-        </label>
-      </div>
-    `;
-  }
+    const newData = ev.detail.value;
+    const newConfig = JSON.parse(JSON.stringify(this._config));
 
-  private renderSwitch(label: string, configKey: string): TemplateResult {
-    const value = this.getNestedValue(this._config, configKey);
+    Object.entries(newData).forEach(([key, value]) => {
+      if (key.startsWith('entities_')) {
+        // Handle entity values (underscore separator)
+        const entityKey = key.replace('entities_', '');
+        if (!newConfig.entities) {
+          newConfig.entities = {};
+        }
+        if (value) {
+          newConfig.entities[entityKey] = value;
+        } else {
+          delete newConfig.entities[entityKey];
+        }
+      } else {
+        // Handle top-level values
+        newConfig[key] = value;
+      }
+    });
 
-    return html`
-      <div class="switch-group">
-        <label>
-          <span>${label}</span>
-          <input
-            type="checkbox"
-            .checked=${value !== false}
-            .configKey=${configKey}
-            @change=${this._valueChanged}
-          />
-        </label>
-      </div>
-    `;
-  }
-
-  private renderSelect(
-    label: string,
-    configKey: string,
-    options: Array<{ value: string; label: string }>
-  ): TemplateResult {
-    const value = this.getNestedValue(this._config, configKey);
-
-    return html`
-      <div class="input-group">
-        <label>
-          ${label}
-          <select .value=${value} .configKey=${configKey} @change=${this._valueChanged}>
-            ${options.map(
-              (option) => html`
-                <option value="${option.value}" ?selected=${value === option.value}>
-                  ${option.label}
-                </option>
-              `
-            )}
-          </select>
-        </label>
-      </div>
-    `;
-  }
-
-  // --- HA Native Pickers ---
-
-  private renderDevicePicker(): TemplateResult {
-    if (!customElements.get('ha-device-picker')) {
-      return html`<div class="loading">Loading device picker...</div>`;
+    // Clean up empty entities object
+    if (newConfig.entities && Object.keys(newConfig.entities).length === 0) {
+      delete newConfig.entities;
     }
-    return html`
-      <ha-device-picker
-        .hass=${this.hass}
-        .value=${this._config.device_id || ''}
-        .label=${'Weather Station Device'}
-        .configValue=${'device_id'}
-        @value-changed=${this._haValueChanged}
-        allow-custom-entity
-      ></ha-device-picker>
-      ${this._config.device_id ? this.renderAutoAssignments() : ''}
-    `;
+
+    this._config = newConfig;
+    fireEvent(this, 'config-changed', { config: this._config });
   }
 
-  private renderManualEntityPickers(): TemplateResult {
-    if (!customElements.get('ha-entity-picker')) {
-      return html`<div class="loading">Loading entity pickers...</div>`;
+  /**
+   * Handler for warning settings form value changes
+   */
+  private _warningFormValueChanged(ev: CustomEvent): void {
+    ev.stopPropagation();
+    if (!this._config || !this.hass) return;
+
+    const newData = ev.detail.value;
+    const newConfig = JSON.parse(JSON.stringify(this._config));
+
+    if (!newConfig.warnings) {
+      newConfig.warnings = {};
     }
-    return html`
-      <div class="manual-entities">
-        ${Object.entries(ENTITY_LABELS).map(([key, label]) => {
-          const value = (this.getNestedValue(this._config, 'entities.' + key) as string) || '';
-          return html`
-            <ha-entity-picker
-              .hass=${this.hass}
-              .value=${value}
-              .label=${label}
-              include-domains="sensor"
-              .configValue=${'entities.' + key}
-              @value-changed=${this._haValueChanged}
-              allow-custom-entity
-            ></ha-entity-picker>
-          `;
-        })}
-      </div>
-    `;
+
+    Object.entries(newData).forEach(([key, value]) => {
+      // Parse key like "warnings_wind_speed_enabled" into nested structure
+      const parts = key.replace('warnings_', '').split('_');
+      const warningType = parts.slice(0, -1).join('_'); // e.g., "wind_speed", "rain_rate"
+      const property = parts[parts.length - 1]; // e.g., "enabled", "threshold"
+
+      if (!newConfig.warnings[warningType]) {
+        newConfig.warnings[warningType] = {};
+      }
+      newConfig.warnings[warningType][property] = value;
+    });
+
+    this._config = newConfig;
+    fireEvent(this, 'config-changed', { config: this._config });
   }
 
   // --- Auto Mode Entity Assignment Display ---
@@ -380,118 +589,23 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
                     ? html`<span class="assignment-badge not-found">Not found</span>`
                     : html`<span class="assignment-badge auto">Auto</span>`}
               </div>
-              <ha-entity-picker
+              <ha-form
                 .hass=${this.hass}
-                .value=${effectiveEntity}
-                .label=${'Entity for ' + label}
-                include-domains="sensor"
-                .configValue=${'entities.' + key}
-                @value-changed=${this._haValueChanged}
-                allow-custom-entity
-              ></ha-entity-picker>
+                .data=${{ [`entities_${key}`]: effectiveEntity }}
+                .schema=${[{ name: `entities_${key}`, selector: { entity: { domain: 'sensor' } } }]}
+                .computeLabel=${() => 'Entity for ' + label}
+                @value-changed=${this._formValueChanged}
+              ></ha-form>
               ${isOverridden
                 ? html`<button class="reset-btn" @click=${() => this._clearOverride(key)}>
                     Reset to auto
                   </button>`
-                : ''}
+                : nothing}
             </div>
           `;
         })}
       </div>
     `;
-  }
-
-  // --- Value Change Handlers ---
-
-  private getNestedValue(obj: Record<string, unknown>, path: string): unknown {
-    return path.split('.').reduce((current, prop) => {
-      if (current && typeof current === 'object') {
-        return (current as Record<string, unknown>)[prop];
-      }
-      return undefined;
-    }, obj as unknown);
-  }
-
-  private setNestedValue(
-    obj: Record<string, unknown>,
-    path: string,
-    value: unknown
-  ): Record<string, unknown> {
-    const keys = path.split('.');
-    const lastKey = keys.pop()!;
-    const target = keys.reduce((current, key) => {
-      if (!current[key]) {
-        current[key] = {};
-      }
-      return current[key] as Record<string, unknown>;
-    }, obj);
-    target[lastKey] = value;
-    return obj;
-  }
-
-  /**
-   * Handler for native form elements (input, select, checkbox).
-   */
-  private _valueChanged(ev: Event): void {
-    if (!this._config || !this.hass) {
-      return;
-    }
-
-    const target = ev.target as HTMLInputElement & { configKey?: string };
-    const configKey = target.configKey;
-
-    if (!configKey) {
-      return;
-    }
-
-    let value: string | number | boolean;
-    if (target.type === 'checkbox') {
-      value = target.checked ?? false;
-    } else if (target.type === 'number') {
-      value = parseFloat(target.value ?? '0');
-    } else {
-      value = target.value ?? '';
-    }
-
-    const newConfig = JSON.parse(JSON.stringify(this._config));
-    this.setNestedValue(newConfig, configKey, value);
-
-    this._config = newConfig;
-    fireEvent(this, 'config-changed', { config: this._config });
-  }
-
-  /**
-   * Handler for HA custom elements (ha-entity-picker, ha-device-picker).
-   * These fire 'value-changed' CustomEvents with ev.detail.value.
-   * Uses ev.currentTarget to reliably get the element with configValue,
-   * since ev.target may point to an internal child element.
-   */
-  private _haValueChanged(ev: CustomEvent): void {
-    ev.stopPropagation();
-    if (!this._config || !this.hass) return;
-
-    const target = (ev.currentTarget || ev.target) as HTMLElement & { configValue?: string };
-    const configValue = target.configValue;
-    if (!configValue) return;
-
-    const value = ev.detail.value;
-    const newConfig = JSON.parse(JSON.stringify(this._config));
-
-    // In auto mode, clearing an entity picker removes the override
-    if (!value && configValue.startsWith('entities.') && this._config.entity_mode !== 'manual') {
-      const key = configValue.split('.').pop()!;
-      if (newConfig.entities) {
-        delete newConfig.entities[key];
-        if (Object.keys(newConfig.entities).length === 0) {
-          delete newConfig.entities;
-        }
-      }
-    } else {
-      this.setNestedValue(newConfig, configValue, value || '');
-    }
-
-    this._config = newConfig;
-    fireEvent(this, 'config-changed', { config: this._config });
   }
 
   /**
