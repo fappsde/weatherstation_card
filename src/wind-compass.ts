@@ -29,13 +29,7 @@ export class WindCompass extends LitElement {
               <stop offset="0%" stop-color="rgba(255,255,255,0.1)" />
               <stop offset="100%" stop-color="rgba(255,255,255,0)" />
             </radialGradient>
-            <filter id="arrow-glow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="2" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
+            <!-- arrow-glow filter removed for performance -->
           </defs>
 
           <!-- Outer circle with gradient -->
@@ -199,7 +193,7 @@ export class WindCompass extends LitElement {
       }
 
       .compass-svg {
-        filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15));
+        /* Removed drop-shadow filter to reduce GPU composition cost */
       }
 
       .compass-bg {
@@ -293,19 +287,9 @@ export class WindCompass extends LitElement {
         font-size: 10px;
       }
 
-      /* Animation for arrow */
-      @keyframes pulse {
-        0%,
-        100% {
-          filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.5));
-        }
-        50% {
-          filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
-        }
-      }
-
       .wind-arrow.current {
-        animation: pulse 2s ease-in-out infinite;
+        /* Static glow instead of costly infinite animation */
+        filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.5));
       }
     `;
   }

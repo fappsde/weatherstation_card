@@ -20,6 +20,10 @@ export class WeatherSparkline extends LitElement {
   @property({ type: Boolean }) showMinMax = false;
   @property({ type: Boolean }) enableAnimation = true;
 
+  // Stable ID for SVG gradient – avoids DOM thrashing on every re-render
+  private _gradientId = `sp-${this.metric}-${Math.random().toString(36).substr(2, 6)}`;
+  private _hasAnimated = false;
+
   protected render(): TemplateResult {
     if (this.data.length < 2) {
       return html`<div class="no-data">—</div>`;
@@ -28,7 +32,13 @@ export class WeatherSparkline extends LitElement {
     const { path, min, max, points } = generateSparklinePath(this.data, this.width, this.height, 4);
 
     const lastPoint = points[points.length - 1];
-    const gradientId = `gradient-${Math.random().toString(36).substr(2, 9)}`;
+    const gradientId = this._gradientId;
+
+    // Only animate on very first render
+    const shouldAnimate = this.enableAnimation && !this._hasAnimated;
+    if (shouldAnimate) {
+      this._hasAnimated = true;
+    }
 
     // Create area path for gradient fill
     const areaPath =
@@ -42,7 +52,7 @@ export class WeatherSparkline extends LitElement {
           width="${this.width}"
           height="${this.height}"
           viewBox="0 0 ${this.width} ${this.height}"
-          class="sparkline-svg ${this.enableAnimation ? 'animate' : ''}"
+          class="sparkline-svg ${shouldAnimate ? 'animate' : ''}"
         >
           <!-- Gradient definition -->
           ${this.showGradient

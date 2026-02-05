@@ -82,6 +82,49 @@ export class WeatherStationCard extends LitElement {
   @state() private trends: Map<string, TrendData> = new Map();
   @state() private lastHistoryFetch: number = 0;
 
+  // ── Performance caches ──
+  private _cachedEntityIds: Record<string, string | undefined> | null = null;
+  private _cachedDeviceEntities: Record<string, string> | null = null;
+  private _lastDeviceEntityBuild: number = 0;
+  private _historyFetchTimer: ReturnType<typeof setTimeout> | null = null;
+  private _pendingHistoryFetch = false;
+
+  /**
+   * Critical performance gate: only re-render when states we actually
+   * display have changed, not on every hass object swap.
+   */
+  protected shouldUpdate(changedProps: Map<string, unknown>): boolean {
+    if (!changedProps.has('hass')) return true;
+
+    const oldHass = changedProps.get('hass') as HomeAssistant | undefined;
+    if (!oldHass) return true;
+
+    // Check only the entities we care about
+    const entityIds = this._getRelevantEntityIds();
+    let stateChanged = false;
+    for (const id of entityIds) {
+      const oldState = oldHass.states[id];
+      const newState = this.hass.states[id];
+      if (oldState !== newState) {
+        stateChanged = true;
+        break;
+      }
+    }
+
+    // Even if states haven't changed, schedule history fetch periodically
+    if (!stateChanged) {
+      this._scheduleHistoryFetch();
+    }
+
+    return stateChanged;
+  }
+
+  /** Returns the flat list of entity IDs this card is watching */
+  private _getRelevantEntityIds(): string[] {
+    const ids = this.getEntityIds();
+    return Object.values(ids).filter((id): id is string => !!id);
+  }
+
   public static getConfigElement(): LovelaceCardEditor {
     return document.createElement('weatherstation-card-editor') as LovelaceCardEditor;
   }
@@ -107,6 +150,11 @@ export class WeatherStationCard extends LitElement {
 
     this.currentDataView = this.config.data_view || 'live';
     this.currentHistoryPeriod = this.config.history_period || 'day';
+
+    // Invalidate caches on config change
+    this._cachedEntityIds = null;
+    this._cachedDeviceEntities = null;
+    this._lastDeviceEntityBuild = 0;
   }
 
   public getCardSize(): number {
@@ -123,69 +171,124 @@ export class WeatherStationCard extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
-    this.fetchHistoryData();
+    this._scheduleHistoryFetch();
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    if (this._historyFetchTimer) {
+      clearTimeout(this._historyFetchTimer);
+      this._historyFetchTimer = null;
+    }
+  }
+
+  /** Debounced scheduler – avoids duplicate fetches */
+  private _scheduleHistoryFetch(): void {
+    if (this._pendingHistoryFetch) return;
+
+    const now = Date.now();
+    const elapsed = now - this.lastHistoryFetch;
+    // Throttle: at most once per 5 minutes (history doesn't change fast)
+    if (elapsed < 300_000) return;
+
+    this._pendingHistoryFetch = true;
+    // Small delay so multiple rapid hass updates don't each trigger a fetch
+    this._historyFetchTimer = setTimeout(() => {
+      this._pendingHistoryFetch = false;
+      this.fetchHistoryData();
+    }, 2000);
   }
 
   private async fetchHistoryData(): Promise<void> {
     if (!this.hass || !this.config) return;
 
-    // Throttle history fetching to once per minute
-    const now = Date.now();
-    if (now - this.lastHistoryFetch < 60000) return;
-    this.lastHistoryFetch = now;
+    this.lastHistoryFetch = Date.now();
 
     const entities = this.getEntityIds();
     const endTime = new Date();
     const hours = this.getHistoryHours();
     const startTime = new Date(endTime.getTime() - hours * 60 * 60 * 1000);
 
-    for (const [metric, entityId] of Object.entries(entities)) {
-      if (!entityId) continue;
+    // Build a single comma-separated list to fetch all entities in one API call
+    const entityEntries = Object.entries(entities).filter(
+      (e): e is [string, string] => !!e[1]
+    );
+    if (entityEntries.length === 0) return;
 
-      try {
-        const history = await this.hass.callApi<
-          Array<Array<{ state: string; last_changed: string }>>
-        >(
-          'GET',
-          `history/period/${startTime.toISOString()}?filter_entity_id=${entityId}&end_time=${endTime.toISOString()}&minimal_response`
-        );
+    const entityIdList = entityEntries.map(([, id]) => id).join(',');
 
-        if (history && history[0]) {
-          const points: SparklinePoint[] = history[0]
-            .filter((h) => !isNaN(parseFloat(h.state)))
-            .map((h) => ({
+    try {
+      const history = await this.hass.callApi<
+        Array<Array<{ entity_id: string; state: string; last_changed: string }>>
+      >(
+        'GET',
+        `history/period/${startTime.toISOString()}?filter_entity_id=${entityIdList}&end_time=${endTime.toISOString()}&minimal_response&significant_changes_only`
+      );
+
+      if (!history) return;
+
+      // Build lookup: entity_id -> history array
+      const historyByEntity = new Map<string, Array<{ state: string; last_changed: string }>>();
+      for (const entityHistory of history) {
+        if (entityHistory.length > 0) {
+          const eid = (entityHistory[0] as { entity_id?: string }).entity_id;
+          if (eid) historyByEntity.set(eid, entityHistory);
+        }
+      }
+
+      const newHistoryData = new Map<string, SparklinePoint[]>();
+      const newTrends = new Map<string, TrendData>();
+
+      for (const [metric, entityId] of entityEntries) {
+        const entityHistory = historyByEntity.get(entityId);
+        if (!entityHistory) continue;
+
+        const points: SparklinePoint[] = [];
+        for (const h of entityHistory) {
+          const val = parseFloat(h.state);
+          if (!isNaN(val)) {
+            points.push({
               timestamp: new Date(h.last_changed).getTime(),
-              value: parseFloat(h.state),
-            }));
-
-          if (points.length > 0) {
-            // Sample points if too many (max 50 for sparklines)
-            const sampledPoints = this.samplePoints(points, 50);
-            this.historyData.set(metric, sampledPoints);
-
-            // Calculate trend
-            const currentValue = points[points.length - 1].value;
-            const trendPeriodHours = this.getTrendPeriodHours();
-            const trendStartTime = endTime.getTime() - trendPeriodHours * 60 * 60 * 1000;
-            const trendPoints = points.filter((p) => p.timestamp >= trendStartTime);
-
-            if (trendPoints.length > 1) {
-              const trend = calculateTrend(
-                currentValue,
-                trendPoints.slice(0, -1),
-                metric as keyof typeof import('./const').TREND_THRESHOLDS,
-                this.config.trend_period || '1h'
-              );
-              this.trends.set(metric, trend);
-            }
+              value: val,
+            });
           }
         }
-      } catch (e) {
-        console.warn(`Failed to fetch history for ${entityId}:`, e);
-      }
-    }
 
-    this.requestUpdate();
+        if (points.length === 0) continue;
+
+        // Sample down to max 30 points for sparklines (less DOM, still looks smooth)
+        newHistoryData.set(metric, this.samplePoints(points, 30));
+
+        // Calculate trend using only first & last few points (no need for all)
+        const currentValue = points[points.length - 1].value;
+        const trendPeriodHours = this.getTrendPeriodHours();
+        const trendStartTime = endTime.getTime() - trendPeriodHours * 60 * 60 * 1000;
+
+        // Find the oldest point within the trend window
+        let oldestInWindow: SparklinePoint | null = null;
+        for (const p of points) {
+          if (p.timestamp >= trendStartTime) {
+            oldestInWindow = p;
+            break;
+          }
+        }
+
+        if (oldestInWindow) {
+          const trend = calculateTrend(
+            currentValue,
+            [oldestInWindow],
+            metric as keyof typeof import('./const').TREND_THRESHOLDS,
+            this.config.trend_period || '1h'
+          );
+          newTrends.set(metric, trend);
+        }
+      }
+
+      this.historyData = newHistoryData;
+      this.trends = newTrends;
+    } catch (e) {
+      console.warn('Failed to fetch history:', e);
+    }
   }
 
   private getHistoryHours(): number {
@@ -219,43 +322,67 @@ export class WeatherStationCard extends LitElement {
   private samplePoints(points: SparklinePoint[], maxPoints: number): SparklinePoint[] {
     if (points.length <= maxPoints) return points;
 
-    const step = Math.ceil(points.length / maxPoints);
-    return points.filter((_, index) => index % step === 0 || index === points.length - 1);
+    const result: SparklinePoint[] = [points[0]]; // always keep first
+    const step = (points.length - 1) / (maxPoints - 1);
+    for (let i = 1; i < maxPoints - 1; i++) {
+      result.push(points[Math.round(i * step)]);
+    }
+    result.push(points[points.length - 1]); // always keep last
+    return result;
   }
 
   private getEntityIds(): Record<string, string | undefined> {
-    const entities: Record<string, string | undefined> = {};
+    // Return cached result if available
+    if (this._cachedEntityIds) return this._cachedEntityIds;
 
     if (this.config.entity_mode === 'manual' && this.config.entities) {
-      return this.config.entities as Record<string, string | undefined>;
+      this._cachedEntityIds = this.config.entities as Record<string, string | undefined>;
+      return this._cachedEntityIds;
     }
 
+    const entities: Record<string, string | undefined> = {};
+
     if (this.config.device_id) {
-      const hass = this.hass as HomeAssistantExtended;
-      const entityRegistry = hass.entities || {};
+      const deviceEntities = this._getDeviceEntityMap();
 
-      Object.values(this.hass.states).forEach((state) => {
-        const entityId = state.entity_id;
-        const entityEntry = Object.values(entityRegistry).find(
-          (entry) => entry.entity_id === entityId
-        );
-
-        if (entityEntry?.device_id === this.config.device_id) {
-          const entityName = entityId.split('.')[1].toLowerCase();
-
-          for (const [metric, keywords] of Object.entries(ENTITY_KEYWORDS)) {
-            for (const keyword of keywords) {
-              if (entityName.includes(keyword) && !entities[metric]) {
-                entities[metric] = entityId;
-                break;
-              }
+      for (const [entityName, entityId] of Object.entries(deviceEntities)) {
+        for (const [metric, keywords] of Object.entries(ENTITY_KEYWORDS)) {
+          if (entities[metric]) continue;
+          for (const keyword of keywords) {
+            if (entityName.includes(keyword)) {
+              entities[metric] = entityId;
+              break;
             }
           }
         }
-      });
+      }
     }
 
+    this._cachedEntityIds = entities;
     return entities;
+  }
+
+  /** Builds and caches the device_id -> {name: entity_id} map. Rebuilt at most every 60 s. */
+  private _getDeviceEntityMap(): Record<string, string> {
+    const now = Date.now();
+    if (this._cachedDeviceEntities && now - this._lastDeviceEntityBuild < 60_000) {
+      return this._cachedDeviceEntities;
+    }
+
+    const hass = this.hass as HomeAssistantExtended;
+    const entityRegistry = hass.entities || {};
+    const map: Record<string, string> = {};
+
+    for (const entry of Object.values(entityRegistry)) {
+      if (entry.device_id === this.config.device_id) {
+        const name = entry.entity_id.split('.')[1].toLowerCase();
+        map[name] = entry.entity_id;
+      }
+    }
+
+    this._cachedDeviceEntities = map;
+    this._lastDeviceEntityBuild = now;
+    return map;
   }
 
   private getWeatherData(): WeatherData | null {
@@ -277,22 +404,7 @@ export class WeatherStationCard extends LitElement {
   private getDataFromDevice(): WeatherData | null {
     if (!this.config.device_id) return null;
 
-    const deviceEntities: Record<string, string> = {};
-    const hass = this.hass as HomeAssistantExtended;
-    const entityRegistry = hass.entities || {};
-
-    Object.values(this.hass.states).forEach((state) => {
-      const entityId = state.entity_id;
-      const entityEntry = Object.values(entityRegistry).find(
-        (entry) => entry.entity_id === entityId
-      );
-
-      if (entityEntry?.device_id === this.config.device_id) {
-        const entityName = entityId.split('.')[1].toLowerCase();
-        deviceEntities[entityName] = entityId;
-      }
-    });
-
+    const deviceEntities = this._getDeviceEntityMap();
     const overrides = this.config.entities || {};
 
     const getEntityValue = (keywords: string[], overrideEntityId?: string): number | undefined => {
@@ -381,12 +493,8 @@ export class WeatherStationCard extends LitElement {
     };
   }
 
-  private getWarnings(): Warning[] {
+  private _getWarnings(weatherData: WeatherData): Warning[] {
     if (!this.config.enable_warnings) return [];
-
-    const weatherData = this.getWeatherData();
-    if (!weatherData) return [];
-
     return checkWarnings(weatherData, this.config.warnings);
   }
 
@@ -396,7 +504,8 @@ export class WeatherStationCard extends LitElement {
     const weatherData = this.getWeatherData();
     if (!weatherData) return this.renderError();
 
-    const warnings = this.getWarnings();
+    // Pass weatherData directly to avoid recomputing in getWarnings
+    const warnings = this._getWarnings(weatherData);
     const timeOfDay = getTimeOfDay();
     const condition = deriveWeatherCondition(weatherData);
     const cardStyle = this.config.card_style || 'glass';
@@ -920,6 +1029,7 @@ export class WeatherStationCard extends LitElement {
     this.currentDataView = view;
     if (view === 'history') {
       this.lastHistoryFetch = 0; // Force refresh
+      this._pendingHistoryFetch = false;
       this.fetchHistoryData();
     }
   }
@@ -927,6 +1037,7 @@ export class WeatherStationCard extends LitElement {
   private setHistoryPeriod(period: 'day' | 'week' | 'month' | 'year'): void {
     this.currentHistoryPeriod = period;
     this.lastHistoryFetch = 0; // Force refresh
+    this._pendingHistoryFetch = false;
     this.fetchHistoryData();
   }
 
@@ -950,10 +1061,10 @@ export class WeatherStationCard extends LitElement {
 
       .weather-card.glass {
         background: var(--glass-bg);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
         border: 1px solid var(--glass-border);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
       }
 
       .weather-card.solid {
@@ -1080,9 +1191,7 @@ export class WeatherStationCard extends LitElement {
         gap: 8px;
         padding: 10px 14px;
         border-radius: 12px;
-        background: rgba(0, 0, 0, 0.2);
-        backdrop-filter: blur(10px);
-        animation: slideIn 0.3s ease-out;
+        background: rgba(0, 0, 0, 0.25);
       }
 
       .warning-pill.medium {
@@ -1090,7 +1199,6 @@ export class WeatherStationCard extends LitElement {
       }
       .warning-pill.high {
         border-left: 4px solid #dc3545;
-        animation: pulse 2s infinite;
       }
 
       @keyframes slideIn {
@@ -1143,18 +1251,17 @@ export class WeatherStationCard extends LitElement {
       /* Metric Card */
       .metric-card {
         background: rgba(0, 0, 0, 0.15);
-        backdrop-filter: blur(10px);
         border-radius: 12px;
         padding: 14px;
         cursor: pointer;
-        transition: all var(--transition-speed);
+        transition: background var(--transition-speed), transform var(--transition-speed);
         border: 1px solid rgba(255, 255, 255, 0.1);
+        contain: content;
       }
 
       .metric-card:hover {
         transform: translateY(-2px);
         background: rgba(0, 0, 0, 0.2);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
       }
 
       .metric-card.expanded {
@@ -1291,7 +1398,8 @@ export class WeatherStationCard extends LitElement {
         padding: 10px;
         background: rgba(0, 0, 0, 0.15);
         border-radius: 10px;
-        transition: all 0.2s;
+        transition: background 0.2s;
+        contain: content;
       }
 
       .compact-metric:hover {

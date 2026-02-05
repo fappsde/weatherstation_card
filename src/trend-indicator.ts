@@ -93,7 +93,8 @@ export class TrendIndicator extends LitElement {
       }
 
       .trend.pulse {
-        animation: pulse 2s infinite;
+        /* pulse once, then stop — avoids permanent repaint cost */
+        animation: pulse 1s ease-in-out 1;
       }
 
       .value {
