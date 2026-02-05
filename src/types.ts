@@ -2,7 +2,7 @@ import { LovelaceCardConfig } from 'custom-card-helpers';
 
 export interface WeatherStationCardConfig extends LovelaceCardConfig {
   type: string;
-  entity: string; // Primary entity (for backwards compatibility) or main weather entity
+  entity?: string; // Primary entity (for backwards compatibility) or main weather entity
   name?: string;
   show_temperature?: boolean;
   show_humidity?: boolean;

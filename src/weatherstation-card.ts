@@ -45,18 +45,19 @@ export class WeatherStationCard extends LitElement {
     return document.createElement('weatherstation-card-editor') as LovelaceCardEditor;
   }
 
-  public static getStubConfig(): WeatherStationCardConfig {
+  public static getStubConfig(): Partial<WeatherStationCardConfig> {
     return {
       type: 'custom:weatherstation-card',
       entity: '',
+      entity_mode: 'auto',
       name: 'Weather Station',
       ...DEFAULT_CONFIG,
     };
   }
 
   public setConfig(config: WeatherStationCardConfig): void {
-    if (!config.entity) {
-      throw new Error('You need to define an entity');
+    if (!config) {
+      throw new Error('Invalid configuration');
     }
 
     this.config = {
@@ -231,17 +232,24 @@ export class WeatherStationCard extends LitElement {
 
     const weatherData = this.getWeatherData();
     if (!weatherData) {
-      const errorMsg = this.config.device_id
-        ? `No data available from device`
-        : `Entity not available: ${this.config.entity || 'not configured'}`;
+      let errorMsg: string;
+      let hintMsg: string;
+      if (this.config.device_id) {
+        errorMsg = 'No data available from device';
+        hintMsg = 'Please check your configuration and ensure the device exists.';
+      } else if (this.config.entity) {
+        errorMsg = `Entity not available: ${this.config.entity}`;
+        hintMsg = 'Please check your configuration and ensure the entity exists.';
+      } else {
+        errorMsg = 'No device or entity configured';
+        hintMsg = 'Open the card editor and select a device or entity.';
+      }
 
       return html`
         <ha-card>
           <div class="card-content">
             <div class="error">${errorMsg}</div>
-            <div class="error-hint">
-              Please check your configuration and ensure the device or entity exists.
-            </div>
+            <div class="error-hint">${hintMsg}</div>
           </div>
         </ha-card>
       `;
