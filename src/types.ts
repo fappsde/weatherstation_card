@@ -12,6 +12,45 @@ export interface WeatherStationCardConfig extends LovelaceCardConfig {
   show_uv?: boolean;
   show_solar?: boolean;
   theme?: string;
+
+  // Display mode
+  display_mode?: 'normal' | 'compact';
+
+  // Data view mode
+  data_view?: 'live' | 'history';
+  history_period?: 'day' | 'week' | 'month' | 'year';
+
+  // Wind settings
+  show_wind_arrows?: boolean;
+
+  // Warnings
+  enable_warnings?: boolean;
+  warnings?: WarningConfig;
+}
+
+export interface WarningConfig {
+  wind_speed?: {
+    enabled: boolean;
+    threshold: number;
+    message?: string;
+  };
+  temperature?: {
+    enabled: boolean;
+    high_threshold?: number;
+    low_threshold?: number;
+    message_high?: string;
+    message_low?: string;
+  };
+  uv?: {
+    enabled: boolean;
+    threshold: number;
+    message?: string;
+  };
+  rain_rate?: {
+    enabled: boolean;
+    threshold: number;
+    message?: string;
+  };
 }
 
 export interface WeatherData {
@@ -20,10 +59,31 @@ export interface WeatherData {
   pressure?: number;
   wind_speed?: number;
   wind_direction?: number;
+  wind_gust?: number;
+  wind_avg?: number;
+  wind_direction_avg?: number;
   rain?: number;
   rain_rate?: number;
   uv_index?: number;
   solar_radiation?: number;
   feels_like?: number;
   dew_point?: number;
+}
+
+export interface HistoricalData {
+  timestamp: Date;
+  data: WeatherData;
+}
+
+export interface Warning {
+  type: 'wind' | 'temperature' | 'uv' | 'rain';
+  severity: 'low' | 'medium' | 'high';
+  message: string;
+  icon: string;
+}
+
+export interface UVLevel {
+  max: number;
+  label: string;
+  color: string;
 }

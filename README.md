@@ -12,13 +12,17 @@ A beautiful and feature-rich Lovelace card for displaying weather data from Ecow
 ## Features
 
 - 📊 **Real-time weather data display** - Live updates from your weather station
+- 📈 **Historical Data Views** - View data by day, week, month, or year
+- 🎨 **Dual Display Modes** - Normal mode with full details or Compact mode for mobile devices
 - 🌡️ **Temperature & Humidity** - Current readings with feels-like temperature
-- 💨 **Wind Information** - Speed and direction with compass visualization
+- 💨 **Wind Information** - Speed and direction with interactive compass visualization
+- 🧭 **Wind Direction Arrows** - Visual compass with current and average direction indicators
 - 🌧️ **Rainfall Data** - Total precipitation and rainfall rate
 - ☀️ **UV Index** - Color-coded UV level warnings
 - ⚡ **Solar Radiation** - Solar power measurements
-- 🎨 **Customizable** - Show/hide individual sensors
-- 📱 **Responsive Design** - Works on all screen sizes
+- ⚠️ **Smart Warnings System** - Configurable alerts for high wind, extreme temperature, UV, and heavy rain
+- 🎯 **Customizable** - Show/hide individual sensors and configure warning thresholds
+- 📱 **Responsive Design** - Works on all screen sizes with adaptive layouts
 - 🌈 **Theme Support** - Follows Home Assistant themes
 - ♿ **Accessible** - WCAG compliant interface
 
@@ -70,13 +74,43 @@ entity: weather.home
 type: custom:weatherstation-card
 entity: weather.ecowitt_ws90
 name: Backyard Weather Station
+
+# Display Settings
+display_mode: normal  # 'normal' or 'compact'
+data_view: live       # 'live' or 'history'
+history_period: day   # 'day', 'week', 'month', or 'year'
+
+# Visible Sensors
 show_temperature: true
 show_humidity: true
 show_pressure: true
 show_wind: true
+show_wind_arrows: true  # Show wind compass with direction arrows
 show_rain: true
 show_uv: true
 show_solar: true
+
+# Warnings System
+enable_warnings: true
+warnings:
+  wind_speed:
+    enabled: true
+    threshold: 50  # km/h
+    message: "⚠️ High wind speed! Consider closing shades and securing outdoor items."
+  temperature:
+    enabled: true
+    high_threshold: 35  # °C
+    low_threshold: 0    # °C
+    message_high: "🌡️ High temperature! Stay hydrated and avoid direct sunlight."
+    message_low: "❄️ Low temperature! Watch for frost and freezing conditions."
+  uv:
+    enabled: true
+    threshold: 8
+    message: "☀️ Very high UV index! Use sun protection and limit outdoor exposure."
+  rain_rate:
+    enabled: true
+    threshold: 10  # mm/h
+    message: "🌧️ Heavy rain! Check for flooding and secure outdoor items."
 ```
 
 ### Options
@@ -86,13 +120,31 @@ show_solar: true
 | `type` | string | **Required** | Must be `custom:weatherstation-card` |
 | `entity` | string | **Required** | Weather entity ID from your Ecowitt integration |
 | `name` | string | Optional | Card title. If not specified, no title is shown |
+| **Display Options** |
+| `display_mode` | string | `normal` | Display mode: `normal` (full details) or `compact` (mobile-optimized) |
+| `data_view` | string | `live` | Data view: `live` (current data) or `history` (historical charts) |
+| `history_period` | string | `day` | History period: `day`, `week`, `month`, or `year` |
+| **Sensor Visibility** |
 | `show_temperature` | boolean | `true` | Show temperature reading |
 | `show_humidity` | boolean | `true` | Show humidity percentage |
 | `show_pressure` | boolean | `true` | Show atmospheric pressure |
 | `show_wind` | boolean | `true` | Show wind speed and direction |
+| `show_wind_arrows` | boolean | `true` | Show wind compass with direction arrows |
 | `show_rain` | boolean | `true` | Show rainfall data |
 | `show_uv` | boolean | `true` | Show UV index |
 | `show_solar` | boolean | `true` | Show solar radiation |
+| **Warnings** |
+| `enable_warnings` | boolean | `false` | Enable the warnings system |
+| `warnings.wind_speed.enabled` | boolean | `false` | Enable wind speed warnings |
+| `warnings.wind_speed.threshold` | number | `50` | Wind speed threshold in km/h |
+| `warnings.wind_speed.message` | string | Custom | Custom warning message |
+| `warnings.temperature.enabled` | boolean | `false` | Enable temperature warnings |
+| `warnings.temperature.high_threshold` | number | `35` | High temperature threshold in °C |
+| `warnings.temperature.low_threshold` | number | `0` | Low temperature threshold in °C |
+| `warnings.uv.enabled` | boolean | `false` | Enable UV index warnings |
+| `warnings.uv.threshold` | number | `8` | UV index threshold |
+| `warnings.rain_rate.enabled` | boolean | `false` | Enable rain rate warnings |
+| `warnings.rain_rate.threshold` | number | `10` | Rain rate threshold in mm/h |
 
 ## Ecowitt WS90 Integration
 

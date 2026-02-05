@@ -25,3 +25,28 @@ export function formatSpeed(speed: number, unit: string = 'km/h'): string {
 export function formatRain(rain: number, unit: string = 'mm'): string {
   return `${Math.round(rain * 100) / 100} ${unit}`;
 }
+
+export function formatDate(date: Date): string {
+  return date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+export function formatShortDate(date: Date): string {
+  return date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+export function getWindDirectionDegrees(direction: string): number {
+  const index = WIND_DIRECTIONS.indexOf(direction);
+  return index >= 0 ? index * 22.5 : 0;
+}
+
+export function degreesToRadians(degrees: number): number {
+  return (degrees * Math.PI) / 180;
+}

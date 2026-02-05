@@ -8,13 +8,17 @@ A beautiful and feature-rich Lovelace card for displaying weather data from Ecow
 
 ## Features
 
-- 📊 Real-time weather data display
+- 📊 Real-time and historical weather data display
+- 🎨 Dual display modes (Normal & Compact for mobile)
 - 🌡️ Temperature, humidity, and pressure readings
-- 💨 Wind speed and direction
-- 🌧️ Rainfall measurements
+- 💨 Wind speed and direction with interactive compass
+- 🧭 Wind direction arrows showing current and average directions
+- 🌧️ Rainfall measurements with rate
 - ☀️ UV index and solar radiation
-- 🎨 Customizable appearance
-- 📱 Responsive design
+- ⚠️ Smart warnings system for high wind, extreme temps, UV, and heavy rain
+- 📈 Historical data views (day/week/month/year)
+- 🎯 Fully customizable appearance and settings
+- 📱 Responsive design with adaptive layouts
 - ♿ Accessible UI
 
 ## Installation
@@ -48,20 +52,24 @@ Add the card to your Lovelace dashboard:
 type: custom:weatherstation-card
 entity: weather.home
 name: Weather Station
+display_mode: normal  # or 'compact' for mobile
+data_view: live       # or 'history' for charts
+show_wind_arrows: true
+enable_warnings: true
 ```
 
-### Options
+### Key Options
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | `entity` | string | **Required** | Weather entity ID |
 | `name` | string | Optional | Card title |
-| `show_temperature` | boolean | `true` | Show temperature |
-| `show_humidity` | boolean | `true` | Show humidity |
-| `show_pressure` | boolean | `true` | Show pressure |
-| `show_wind` | boolean | `true` | Show wind data |
-| `show_rain` | boolean | `true` | Show rainfall |
-| `show_uv` | boolean | `true` | Show UV index |
+| `display_mode` | string | `normal` | `normal` or `compact` |
+| `data_view` | string | `live` | `live` or `history` |
+| `show_wind_arrows` | boolean | `true` | Show wind compass |
+| `enable_warnings` | boolean | `false` | Enable alert system |
+
+For full configuration options including warning thresholds, see the [README](https://github.com/fappsde/weatherstation_card#readme).
 
 ## Support
 
