@@ -206,6 +206,18 @@ This card is designed to work with the [Ecowitt integration](https://www.home-as
 
 Make sure your Ecowitt device is properly set up and reporting to Home Assistant before using this card.
 
+### Multi-Language Support
+
+The card's auto-discovery feature supports both **English and German** entity names:
+
+**English keywords:**
+- temperature, temp, outdoor_temp, humidity, humid, pressure, wind_speed, wind_direction, gust, rain, rain_rate, uv_index, solar_radiation, light
+
+**German keywords:**
+- temperatur, außentemperatur, feuchtigkeit, feuchte, luftfeuchtigkeit, druck, luftdruck, geschwindigkeit, windgeschwindigkeit, richtung, windrichtung, böe, windboe, regen, niederschlag, regenrate, beleuchtungsstärke, licht
+
+This means the card will automatically work with German weather station integrations (like "Wetterstation Dach" shown above) without any manual configuration.
+
 ## Development
 
 ### Prerequisites
