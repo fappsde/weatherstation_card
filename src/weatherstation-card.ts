@@ -2,7 +2,7 @@ import { LitElement, html, css, CSSResultGroup, TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant, LovelaceCardEditor } from 'custom-card-helpers';
 import { WeatherStationCardConfig, WeatherData, Warning } from './types';
-import { CARD_VERSION, DEFAULT_CONFIG } from './const';
+import { CARD_VERSION, DEFAULT_CONFIG, ENTITY_KEYWORDS } from './const';
 import { formatTemperature, formatPressure, formatSpeed, formatRain, getUVLevel } from './utils';
 import { checkWarnings } from './warnings';
 import './wind-compass';
@@ -115,8 +115,19 @@ export class WeatherStationCard extends LitElement {
       }
     });
 
-    const getEntityValue = (keywords: string[]): number | undefined => {
-      // Find entity matching any of the keywords
+    const overrides = this.config.entities || {};
+
+    const getEntityValue = (keywords: string[], overrideEntityId?: string): number | undefined => {
+      // Check override first
+      if (overrideEntityId) {
+        const entity = this.hass.states[overrideEntityId];
+        if (entity) {
+          const value = parseFloat(entity.state);
+          if (!isNaN(value)) return value;
+        }
+      }
+
+      // Fall back to keyword matching
       for (const keyword of keywords) {
         for (const [name, entityId] of Object.entries(deviceEntities)) {
           if (name.includes(keyword)) {
@@ -132,76 +143,16 @@ export class WeatherStationCard extends LitElement {
     };
 
     return {
-      temperature: getEntityValue([
-        'temperature',
-        'temp',
-        'outdoor_temp',
-        'temperatur',
-        'aussentemperatur',
-        'außentemperatur',
-      ]),
-      humidity: getEntityValue([
-        'humidity',
-        'humid',
-        'feuchtigkeit',
-        'feuchte',
-        'luftfeuchtigkeit',
-      ]),
-      pressure: getEntityValue([
-        'pressure',
-        'absolute_pressure',
-        'relative_pressure',
-        'druck',
-        'luftdruck',
-      ]),
-      wind_speed: getEntityValue([
-        'wind_speed',
-        'windspeed',
-        'geschwindigkeit',
-        'windgeschwindigkeit',
-      ]),
-      wind_direction: getEntityValue([
-        'wind_direction',
-        'wind_bearing',
-        'winddirection',
-        'richtung',
-        'windrichtung',
-      ]),
-      wind_gust: getEntityValue([
-        'gust',
-        'wind_gust',
-        'gust_speed',
-        'geschwindigkeit_2',
-        'boe',
-        'windböe',
-        'windboe',
-      ]),
-      rain: getEntityValue([
-        'rain_total',
-        'daily_rain',
-        'rain',
-        'regen',
-        'niederschlag',
-        'regenmenge',
-      ]),
-      rain_rate: getEntityValue([
-        'rain_rate',
-        'rainrate',
-        'rain_piezo',
-        'regenrate',
-        'niederschlagsrate',
-      ]),
-      uv_index: getEntityValue(['uv_index', 'uvi', 'uv']),
-      solar_radiation: getEntityValue([
-        'solar_radiation',
-        'solar',
-        'light',
-        'solarstrahlung',
-        'sonnenstrahlung',
-        'beleuchtungsstarke',
-        'beleuchtungsstärke',
-        'licht',
-      ]),
+      temperature: getEntityValue(ENTITY_KEYWORDS.temperature, overrides.temperature),
+      humidity: getEntityValue(ENTITY_KEYWORDS.humidity, overrides.humidity),
+      pressure: getEntityValue(ENTITY_KEYWORDS.pressure, overrides.pressure),
+      wind_speed: getEntityValue(ENTITY_KEYWORDS.wind_speed, overrides.wind_speed),
+      wind_direction: getEntityValue(ENTITY_KEYWORDS.wind_direction, overrides.wind_direction),
+      wind_gust: getEntityValue(ENTITY_KEYWORDS.wind_gust, overrides.wind_gust),
+      rain: getEntityValue(ENTITY_KEYWORDS.rain, overrides.rain),
+      rain_rate: getEntityValue(ENTITY_KEYWORDS.rain_rate, overrides.rain_rate),
+      uv_index: getEntityValue(ENTITY_KEYWORDS.uv_index, overrides.uv_index),
+      solar_radiation: getEntityValue(ENTITY_KEYWORDS.solar_radiation, overrides.solar_radiation),
     };
   }
 
