@@ -5,6 +5,10 @@ import {
   formatPressure,
   formatSpeed,
   formatRain,
+  formatDate,
+  formatShortDate,
+  getWindDirectionDegrees,
+  degreesToRadians,
 } from '../utils';
 
 describe('Utils', () => {
@@ -129,6 +133,55 @@ describe('Utils', () => {
 
     it('should handle custom units', () => {
       expect(formatRain(0.2, 'in')).toBe('0.2 in');
+    });
+  });
+
+  describe('formatDate', () => {
+    it('should format a date with month, day, hour, minute', () => {
+      const date = new Date(2024, 5, 15, 14, 30); // June 15, 2024 14:30
+      const formatted = formatDate(date);
+      expect(formatted).toBeDefined();
+      expect(typeof formatted).toBe('string');
+      expect(formatted.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('formatShortDate', () => {
+    it('should format a date with month and day only', () => {
+      const date = new Date(2024, 0, 1); // Jan 1, 2024
+      const formatted = formatShortDate(date);
+      expect(formatted).toBeDefined();
+      expect(typeof formatted).toBe('string');
+      expect(formatted.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('getWindDirectionDegrees', () => {
+    it('should return degrees for cardinal directions', () => {
+      expect(getWindDirectionDegrees('N')).toBe(0);
+      expect(getWindDirectionDegrees('E')).toBe(90);
+      expect(getWindDirectionDegrees('S')).toBe(180);
+      expect(getWindDirectionDegrees('W')).toBe(270);
+    });
+
+    it('should return degrees for intermediate directions', () => {
+      expect(getWindDirectionDegrees('NE')).toBe(45);
+      expect(getWindDirectionDegrees('SE')).toBe(135);
+      expect(getWindDirectionDegrees('SW')).toBe(225);
+      expect(getWindDirectionDegrees('NW')).toBe(315);
+    });
+
+    it('should return 0 for unknown direction', () => {
+      expect(getWindDirectionDegrees('INVALID')).toBe(0);
+    });
+  });
+
+  describe('degreesToRadians', () => {
+    it('should convert degrees to radians', () => {
+      expect(degreesToRadians(0)).toBe(0);
+      expect(degreesToRadians(180)).toBeCloseTo(Math.PI);
+      expect(degreesToRadians(360)).toBeCloseTo(2 * Math.PI);
+      expect(degreesToRadians(90)).toBeCloseTo(Math.PI / 2);
     });
   });
 });

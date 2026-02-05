@@ -1,4 +1,21 @@
-import { LovelaceCardConfig } from 'custom-card-helpers';
+import { LovelaceCardConfig, HomeAssistant } from 'custom-card-helpers';
+
+/**
+ * Entity registry entry available at runtime on HomeAssistant object
+ * but not included in custom-card-helpers type definitions.
+ */
+export interface EntityRegistryEntry {
+  entity_id: string;
+  device_id?: string;
+}
+
+/**
+ * Extended HomeAssistant type that includes the entity registry,
+ * which is available at runtime but missing from custom-card-helpers types.
+ */
+export type HomeAssistantExtended = HomeAssistant & {
+  entities?: Record<string, EntityRegistryEntry>;
+};
 
 export interface WeatherStationCardConfig extends LovelaceCardConfig {
   type: string;

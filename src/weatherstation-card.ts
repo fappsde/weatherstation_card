@@ -1,7 +1,7 @@
 import { LitElement, html, css, CSSResultGroup, TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant, LovelaceCardEditor } from 'custom-card-helpers';
-import { WeatherStationCardConfig, WeatherData, Warning } from './types';
+import { WeatherStationCardConfig, WeatherData, Warning, HomeAssistantExtended } from './types';
 import { CARD_VERSION, DEFAULT_CONFIG, ENTITY_KEYWORDS } from './const';
 import { formatTemperature, formatPressure, formatSpeed, formatRain, getUVLevel } from './utils';
 import { checkWarnings } from './warnings';
@@ -49,7 +49,6 @@ export class WeatherStationCard extends LitElement {
     return {
       type: 'custom:weatherstation-card',
       entity: '',
-      entity_mode: 'auto',
       name: 'Weather Station',
       ...DEFAULT_CONFIG,
     };
@@ -102,15 +101,16 @@ export class WeatherStationCard extends LitElement {
     // Find all entities belonging to this device
     const deviceEntities: Record<string, string> = {};
 
+    const hass = this.hass as HomeAssistantExtended;
+    const entityRegistry = hass.entities || {};
+
     Object.values(this.hass.states).forEach((state) => {
       const entityId = state.entity_id;
-      const entityRegistry = this.hass.entities || {};
       const entityEntry = Object.values(entityRegistry).find(
-        (entry: { entity_id?: string }) => entry.entity_id === entityId
-      ) as { device_id?: string } | undefined;
+        (entry) => entry.entity_id === entityId
+      );
 
       if (entityEntry?.device_id === this.config.device_id) {
-        // Map entities by their type/name
         const entityName = entityId.split('.')[1].toLowerCase();
         deviceEntities[entityName] = entityId;
       }

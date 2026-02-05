@@ -1,7 +1,7 @@
 import { LitElement, html, css, CSSResultGroup, TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant, fireEvent, LovelaceCardEditor } from 'custom-card-helpers';
-import { WeatherStationCardConfig } from './types';
+import { WeatherStationCardConfig, HomeAssistantExtended } from './types';
 import { ENTITY_KEYWORDS, ENTITY_LABELS } from './const';
 
 @customElement('weatherstation-card-editor')
@@ -261,12 +261,14 @@ export class WeatherStationCardEditor extends LitElement implements LovelaceCard
 
   private resolveAutoEntities(deviceId: string): Record<string, string | undefined> {
     const deviceEntities: Record<string, string> = {};
+    const hass = this.hass as HomeAssistantExtended;
+    const entityRegistry = hass.entities || {};
 
     Object.values(this.hass.states).forEach((state: { entity_id: string }) => {
       const entityId = state.entity_id;
-      const entityEntry = Object.values(this.hass.entities || {}).find(
-        (entry: { entity_id?: string }) => entry.entity_id === entityId
-      ) as { device_id?: string } | undefined;
+      const entityEntry = Object.values(entityRegistry).find(
+        (entry) => entry.entity_id === entityId
+      );
 
       if (entityEntry?.device_id === deviceId) {
         const entityName = entityId.split('.')[1].toLowerCase();

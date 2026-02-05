@@ -7,6 +7,11 @@ module.exports = {
     'src/**/*.ts',
     '!src/**/*.d.ts',
     '!src/**/__tests__/**',
+    // LitElement web components require a browser test runner (e.g. @web/test-runner),
+    // not jest/jsdom. Exclude from jest coverage to avoid misleading thresholds.
+    '!src/weatherstation-card.ts',
+    '!src/card-editor.ts',
+    '!src/wind-compass.ts',
   ],
   coverageThreshold: {
     global: {
