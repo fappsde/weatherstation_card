@@ -268,24 +268,18 @@ export class WeatherStationCard extends LitElement {
         // Sample down to max 30 points for sparklines (less DOM, still looks smooth)
         newHistoryData.set(metric, this.samplePoints(points, 30));
 
-        // Calculate trend using only first & last few points (no need for all)
+        // Smart trend: pass ALL points inside the trend window so
+        // linear regression can fit the dominant direction.
         const currentValue = points[points.length - 1].value;
         const trendPeriodHours = this.getTrendPeriodHours();
         const trendStartTime = endTime.getTime() - trendPeriodHours * 60 * 60 * 1000;
 
-        // Find the oldest point within the trend window
-        let oldestInWindow: SparklinePoint | null = null;
-        for (const p of points) {
-          if (p.timestamp >= trendStartTime) {
-            oldestInWindow = p;
-            break;
-          }
-        }
+        const windowPoints = points.filter(p => p.timestamp >= trendStartTime);
 
-        if (oldestInWindow) {
+        if (windowPoints.length > 0) {
           const trend = calculateTrend(
             currentValue,
-            [oldestInWindow],
+            windowPoints,
             metric as keyof typeof import('./const').TREND_THRESHOLDS,
             this.config.trend_period || '1h'
           );

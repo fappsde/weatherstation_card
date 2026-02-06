@@ -26,6 +26,7 @@ export interface TrendData {
   absoluteChange: number;
   timeframe: string; // e.g., "1h", "24h"
   previousValue: number;
+  confidence?: number; // R² from linear regression (0-1), measures trend clarity
 }
 
 /**

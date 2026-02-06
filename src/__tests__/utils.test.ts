@@ -9,7 +9,10 @@ import {
   formatShortDate,
   getWindDirectionDegrees,
   degreesToRadians,
+  linearRegression,
+  calculateTrend,
 } from '../utils';
+import { SparklinePoint } from '../types';
 
 describe('Utils', () => {
   describe('getWindDirection', () => {
@@ -182,6 +185,162 @@ describe('Utils', () => {
       expect(degreesToRadians(180)).toBeCloseTo(Math.PI);
       expect(degreesToRadians(360)).toBeCloseTo(2 * Math.PI);
       expect(degreesToRadians(90)).toBeCloseTo(Math.PI / 2);
+    });
+  });
+
+  // =========================================================
+  // Smart trend tests (linear regression)
+  // =========================================================
+
+  /** Helper: generate evenly spaced points over `hours` */
+  function makePoints(values: number[], hours: number): SparklinePoint[] {
+    const MS_PER_HOUR = 3_600_000;
+    const t0 = Date.now() - hours * MS_PER_HOUR;
+    return values.map((v, i) => ({
+      timestamp: t0 + (i / (values.length - 1)) * hours * MS_PER_HOUR,
+      value: v,
+    }));
+  }
+
+  describe('linearRegression', () => {
+    it('should return zero slope for constant values', () => {
+      const pts = makePoints([20, 20, 20, 20, 20], 1);
+      const { slope, r2 } = linearRegression(pts);
+      expect(slope).toBeCloseTo(0);
+      expect(r2).toBeCloseTo(0);
+    });
+
+    it('should find positive slope for steadily rising data', () => {
+      // 20 → 25 over 1 hour = 5 per hour
+      const pts = makePoints([20, 21, 22, 23, 24, 25], 1);
+      const { slope, r2 } = linearRegression(pts);
+      expect(slope).toBeCloseTo(5, 0);
+      expect(r2).toBeCloseTo(1, 1);
+    });
+
+    it('should find negative slope for steadily falling data', () => {
+      const pts = makePoints([25, 24, 23, 22, 21, 20], 2);
+      const { slope, r2 } = linearRegression(pts);
+      expect(slope).toBeLessThan(0);
+      expect(r2).toBeCloseTo(1, 1);
+    });
+
+    it('should handle a single point gracefully', () => {
+      const { slope, r2 } = linearRegression([{ timestamp: Date.now(), value: 15 }]);
+      expect(slope).toBe(0);
+      expect(r2).toBe(0);
+    });
+
+    it('should handle empty array', () => {
+      const { slope, r2 } = linearRegression([]);
+      expect(slope).toBe(0);
+      expect(r2).toBe(0);
+    });
+
+    it('should report low R² for noisy oscillating data', () => {
+      // zigzag: no clear direction
+      const pts = makePoints([20, 22, 19, 23, 18, 21, 20], 3);
+      const { r2 } = linearRegression(pts);
+      expect(r2).toBeLessThan(0.15);
+    });
+  });
+
+  describe('calculateTrend (smart)', () => {
+    it('1h up then 2h down → downtrend', () => {
+      // Rise for 1h: 20→23, then fall for 2h: 23→18
+      // 4 points rising over 1h, 8 points falling over 2h
+      const MS = 3_600_000;
+      const t0 = Date.now() - 3 * MS;
+      const points: SparklinePoint[] = [];
+
+      // Rising phase: 0h to 1h (5 points)
+      for (let i = 0; i <= 4; i++) {
+        points.push({ timestamp: t0 + (i / 4) * MS, value: 20 + (3 * i) / 4 });
+      }
+      // Falling phase: 1h to 3h (9 points)
+      for (let i = 1; i <= 8; i++) {
+        points.push({ timestamp: t0 + MS + (i / 8) * 2 * MS, value: 23 - (5 * i) / 8 });
+      }
+
+      const trend = calculateTrend(18, points, 'temperature', '3h');
+      expect(trend.direction).toBe('down');
+      expect(trend.absoluteChange).toBeLessThan(0);
+      expect(trend.confidence).toBeGreaterThan(0);
+    });
+
+    it('2h up then 6h down → downtrend', () => {
+      const MS = 3_600_000;
+      const t0 = Date.now() - 8 * MS;
+      const points: SparklinePoint[] = [];
+
+      // Rising 2h: 20→24
+      for (let i = 0; i <= 4; i++) {
+        points.push({ timestamp: t0 + (i / 4) * 2 * MS, value: 20 + (4 * i) / 4 });
+      }
+      // Falling 6h: 24→15
+      for (let i = 1; i <= 12; i++) {
+        points.push({ timestamp: t0 + 2 * MS + (i / 12) * 6 * MS, value: 24 - (9 * i) / 12 });
+      }
+
+      const trend = calculateTrend(15, points, 'temperature', '12h');
+      expect(trend.direction).toBe('down');
+    });
+
+    it('small oscillations → stable', () => {
+      // Temperature bouncing ±0.2°C around 20°C
+      const pts = makePoints([20, 20.1, 19.9, 20.2, 19.8, 20, 20.1, 19.9, 20], 3);
+      const trend = calculateTrend(20, pts, 'temperature', '3h');
+      expect(trend.direction).toBe('stable');
+    });
+
+    it('steady rise → uptrend with high confidence', () => {
+      const pts = makePoints([20, 20.5, 21, 21.5, 22, 22.5, 23], 1);
+      const trend = calculateTrend(23, pts, 'temperature', '1h');
+      expect(trend.direction).toBe('up');
+      expect(trend.absoluteChange).toBeGreaterThan(0);
+      expect(trend.confidence).toBeGreaterThan(0.9);
+    });
+
+    it('steady fall → downtrend with high confidence', () => {
+      const pts = makePoints([1020, 1019, 1018, 1017, 1016], 3);
+      const trend = calculateTrend(1016, pts, 'pressure', '3h');
+      expect(trend.direction).toBe('down');
+      expect(trend.confidence).toBeGreaterThan(0.9);
+    });
+
+    it('empty history → stable', () => {
+      const trend = calculateTrend(20, [], 'temperature', '1h');
+      expect(trend.direction).toBe('stable');
+      expect(trend.confidence).toBe(0);
+    });
+
+    it('single point fallback still works', () => {
+      const pts: SparklinePoint[] = [{ timestamp: Date.now() - 3_600_000, value: 18 }];
+      const trend = calculateTrend(21, pts, 'temperature', '1h');
+      // 3°C change exceeds 0.3 threshold
+      expect(trend.direction).toBe('up');
+      expect(trend.absoluteChange).toBeCloseTo(3, 0);
+    });
+
+    it('rise then plateau → weaker uptrend', () => {
+      // Sharp rise in first hour, then flat for 2 hours
+      const MS = 3_600_000;
+      const t0 = Date.now() - 3 * MS;
+      const points: SparklinePoint[] = [];
+
+      // Rising 1h: 20→24
+      for (let i = 0; i <= 4; i++) {
+        points.push({ timestamp: t0 + (i / 4) * MS, value: 20 + (4 * i) / 4 });
+      }
+      // Flat 2h: 24
+      for (let i = 1; i <= 8; i++) {
+        points.push({ timestamp: t0 + MS + (i / 8) * 2 * MS, value: 24 });
+      }
+
+      const trend = calculateTrend(24, points, 'temperature', '3h');
+      // Still up overall but confidence lower than pure rise
+      expect(trend.direction).toBe('up');
+      expect(trend.absoluteChange).toBeGreaterThan(0);
     });
   });
 });
