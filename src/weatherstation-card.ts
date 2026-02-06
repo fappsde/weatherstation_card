@@ -85,7 +85,6 @@ export class WeatherStationCard extends LitElement {
   // ── Performance caches ──
   private _cachedEntityIds: Record<string, string | undefined> | null = null;
   private _cachedDeviceEntities: Record<string, string> | null = null;
-  private _lastDeviceEntityBuild: number = 0;
   private _historyFetchTimer: ReturnType<typeof setTimeout> | null = null;
   private _pendingHistoryFetch = false;
 
@@ -143,6 +142,7 @@ export class WeatherStationCard extends LitElement {
       throw new Error('Invalid configuration');
     }
 
+    const prevConfig = this.config;
     this.config = {
       ...DEFAULT_CONFIG,
       ...config,
@@ -151,10 +151,19 @@ export class WeatherStationCard extends LitElement {
     this.currentDataView = this.config.data_view || 'live';
     this.currentHistoryPeriod = this.config.history_period || 'day';
 
-    // Invalidate caches on config change
-    this._cachedEntityIds = null;
-    this._cachedDeviceEntities = null;
-    this._lastDeviceEntityBuild = 0;
+    // Only invalidate entity caches when the entity source actually changed
+    const oldDeviceId = prevConfig?.device_id;
+    const oldEntityMode = prevConfig?.entity_mode;
+    const oldEntities = prevConfig?.entities;
+    if (
+      !prevConfig ||
+      oldDeviceId !== this.config.device_id ||
+      oldEntityMode !== this.config.entity_mode ||
+      JSON.stringify(oldEntities) !== JSON.stringify(this.config.entities)
+    ) {
+      this._cachedEntityIds = null;
+      this._cachedDeviceEntities = null;
+    }
   }
 
   public getCardSize(): number {
@@ -362,10 +371,9 @@ export class WeatherStationCard extends LitElement {
     return entities;
   }
 
-  /** Builds and caches the device_id -> {name: entity_id} map. Rebuilt at most every 60 s. */
+  /** Builds and caches the device_id -> {name: entity_id} map. Only rebuilt when config changes. */
   private _getDeviceEntityMap(): Record<string, string> {
-    const now = Date.now();
-    if (this._cachedDeviceEntities && now - this._lastDeviceEntityBuild < 60_000) {
+    if (this._cachedDeviceEntities) {
       return this._cachedDeviceEntities;
     }
 
@@ -381,7 +389,6 @@ export class WeatherStationCard extends LitElement {
     }
 
     this._cachedDeviceEntities = map;
-    this._lastDeviceEntityBuild = now;
     return map;
   }
 
