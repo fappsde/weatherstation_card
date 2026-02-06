@@ -56,8 +56,81 @@ export function degreesToRadians(degrees: number): number {
 // NEW: Trend and History Utilities
 // ============================================
 
+const MS_PER_HOUR = 3_600_000;
+
 /**
- * Calculate trend data from history values
+ * Minimum R² to consider a trend real rather than noise.
+ * Below this the data oscillates too much to call a direction.
+ */
+const MIN_R2_FOR_TREND = 0.1;
+
+/**
+ * Ordinary least-squares linear regression on time-series data.
+ *
+ * Timestamps are normalised to hours from the first point so that
+ * `slope` is in "value-units per hour".
+ *
+ * Returns slope, intercept (value at t=0, i.e. start of window),
+ * r2 (coefficient of determination, 0-1) and the window span in hours.
+ */
+export function linearRegression(points: SparklinePoint[]): {
+  slope: number;
+  intercept: number;
+  r2: number;
+  windowHours: number;
+} {
+  const n = points.length;
+  if (n === 0) return { slope: 0, intercept: 0, r2: 0, windowHours: 0 };
+  if (n === 1) return { slope: 0, intercept: points[0].value, r2: 0, windowHours: 0 };
+
+  const t0 = points[0].timestamp;
+
+  let sumT = 0;
+  let sumV = 0;
+  let sumTV = 0;
+  let sumT2 = 0;
+  let sumV2 = 0;
+
+  for (const p of points) {
+    const t = (p.timestamp - t0) / MS_PER_HOUR;
+    const v = p.value;
+    sumT += t;
+    sumV += v;
+    sumTV += t * v;
+    sumT2 += t * t;
+    sumV2 += v * v;
+  }
+
+  const denomT = n * sumT2 - sumT * sumT;
+  if (denomT === 0) {
+    // All points share the same timestamp – no slope determinable
+    return { slope: 0, intercept: sumV / n, r2: 0, windowHours: 0 };
+  }
+
+  const slope = (n * sumTV - sumT * sumV) / denomT;
+  const intercept = (sumV - slope * sumT) / n;
+
+  // R² = correlation coefficient squared
+  const denomV = n * sumV2 - sumV * sumV;
+  const r2 = denomV === 0 ? 0 : Math.pow(n * sumTV - sumT * sumV, 2) / (denomT * denomV);
+
+  const windowHours = (points[points.length - 1].timestamp - t0) / MS_PER_HOUR;
+
+  return { slope, intercept, r2: Math.min(r2, 1), windowHours };
+}
+
+/**
+ * Smart trend calculation using linear regression.
+ *
+ * Instead of comparing just the first and last value (which can be fooled
+ * by "1 h up, 2 h down" patterns), this fits a least-squares line through
+ * ALL data points in the window.  The slope captures the dominant direction,
+ * and R² filters out noisy oscillations that have no clear trend.
+ *
+ * @param currentValue  Latest sensor reading
+ * @param historyValues All SparklinePoints inside the trend window (sorted by time)
+ * @param metric        Metric key for looking up significance thresholds
+ * @param timeframe     Human-readable label for the window ("1h", "3h", …)
  */
 export function calculateTrend(
   currentValue: number,
@@ -72,17 +145,47 @@ export function calculateTrend(
       absoluteChange: 0,
       timeframe,
       previousValue: currentValue,
+      confidence: 0,
     };
   }
 
-  const previousValue = historyValues[0].value;
-  const absoluteChange = currentValue - previousValue;
+  // Fallback for single-point data: simple before/after comparison
+  if (historyValues.length === 1) {
+    const previousValue = historyValues[0].value;
+    const absoluteChange = currentValue - previousValue;
+    const percentChange = previousValue !== 0 ? (absoluteChange / previousValue) * 100 : 0;
+    const thresholds = TREND_THRESHOLDS[metric] || { significant: 0.1, major: 1 };
+
+    let direction: TrendData['direction'] = 'stable';
+    if (Math.abs(absoluteChange) >= thresholds.significant) {
+      direction = absoluteChange > 0 ? 'up' : 'down';
+    }
+
+    return {
+      direction,
+      percentChange: Math.round(percentChange * 10) / 10,
+      absoluteChange: Math.round(absoluteChange * 10) / 10,
+      timeframe,
+      previousValue,
+      confidence: 0,
+    };
+  }
+
+  // ---- Linear regression on all window points ----
+  const { slope, intercept, r2, windowHours } = linearRegression(historyValues);
+
+  // Predicted change over the full window span
+  const absoluteChange = slope * windowHours;
+  const previousValue = intercept; // regression value at window start
   const percentChange = previousValue !== 0 ? (absoluteChange / previousValue) * 100 : 0;
 
   const thresholds = TREND_THRESHOLDS[metric] || { significant: 0.1, major: 1 };
   let direction: TrendData['direction'] = 'stable';
 
-  if (Math.abs(absoluteChange) >= thresholds.significant) {
+  // Only declare a trend when:
+  //  1. The regression slope produces a change exceeding the significance threshold
+  //  2. R² is high enough that the slope is meaningful (not just noise)
+  if (Math.abs(absoluteChange) >= thresholds.significant && r2 >= MIN_R2_FOR_TREND) {
     direction = absoluteChange > 0 ? 'up' : 'down';
   }
 
@@ -91,7 +194,8 @@ export function calculateTrend(
     percentChange: Math.round(percentChange * 10) / 10,
     absoluteChange: Math.round(absoluteChange * 10) / 10,
     timeframe,
-    previousValue,
+    previousValue: Math.round(previousValue * 10) / 10,
+    confidence: Math.round(r2 * 100) / 100,
   };
 }
 
