@@ -194,7 +194,7 @@ export function generateSparklinePath(
   points: SparklinePoint[],
   width: number,
   height: number,
-  padding: number = 4
+  padding: number | { top: number; right: number; bottom: number; left: number } = 4
 ): {
   path: string;
   min: number;
@@ -205,17 +205,21 @@ export function generateSparklinePath(
     return { path: '', min: 0, max: 0, points: [] };
   }
 
+  const pad = typeof padding === 'number'
+    ? { top: padding, right: padding, bottom: padding, left: padding }
+    : padding;
+
   const values = points.map((p) => p.value);
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max - min || 1;
 
-  const usableWidth = width - padding * 2;
-  const usableHeight = height - padding * 2;
+  const usableWidth = width - pad.left - pad.right;
+  const usableHeight = height - pad.top - pad.bottom;
 
   const pathPoints = points.map((point, index) => {
-    const x = padding + (index / (points.length - 1)) * usableWidth;
-    const y = padding + usableHeight - ((point.value - min) / range) * usableHeight;
+    const x = pad.left + (index / (points.length - 1)) * usableWidth;
+    const y = pad.top + usableHeight - ((point.value - min) / range) * usableHeight;
     return { x, y, value: point.value };
   });
 

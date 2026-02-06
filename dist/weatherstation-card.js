@@ -15,7 +15,7 @@ const t=globalThis,i=t.ShadowRoot&&(void 0===t.ShadyCSS||t.ShadyCSS.nativeShadow
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const x=globalThis,M=e=>e,k=x.trustedTypes,C=k?k.createPolicy("lit-html",{createHTML:e=>e}):void 0,A="$lit$",E=`lit$${Math.random().toFixed(9).slice(2)}$`,S="?"+E,H=`<${S}>`,D=document,T=()=>D.createComment(""),P=e=>null===e||"object"!=typeof e&&"function"!=typeof e,L=Array.isArray,O="[ \t\n\f\r]",z=/<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g,V=/-->/g,j=/>/g,W=RegExp(`>|${O}(?:([^\\s"'>=/]+)(${O}*=${O}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`,"g"),N=/'/g,U=/"/g,F=/^(?:script|style|textarea|title)$/i,R=e=>(t,...i)=>({_$litType$:e,strings:t,values:i}),I=R(1),B=R(2),G=Symbol.for("lit-noChange"),J=Symbol.for("lit-nothing"),Z=new WeakMap,q=D.createTreeWalker(D,129);function Y(e,t){if(!L(e)||!e.hasOwnProperty("raw"))throw Error("invalid template strings array");return void 0!==C?C.createHTML(t):t}const K=(e,t)=>{const i=e.length-1,r=[];let s,a=2===t?"<svg>":3===t?"<math>":"",n=z;for(let t=0;t<i;t++){const i=e[t];let o,d,c=-1,h=0;for(;h<i.length&&(n.lastIndex=h,d=n.exec(i),null!==d);)h=n.lastIndex,n===z?"!--"===d[1]?n=V:void 0!==d[1]?n=j:void 0!==d[2]?(F.test(d[2])&&(s=RegExp("</"+d[2],"g")),n=W):void 0!==d[3]&&(n=W):n===W?">"===d[0]?(n=s??z,c=-1):void 0===d[1]?c=-2:(c=n.lastIndex-d[2].length,o=d[1],n=void 0===d[3]?W:'"'===d[3]?U:N):n===U||n===N?n=W:n===V||n===j?n=z:(n=W,s=void 0);const l=n===W&&e[t+1].startsWith("/>")?" ":"";a+=n===z?i+H:c>=0?(r.push(o),i.slice(0,c)+A+i.slice(c)+E+l):i+E+(-2===c?t:l)}return[Y(e,a+(e[i]||"<?>")+(2===t?"</svg>":3===t?"</math>":"")),r]};class Q{constructor({strings:e,_$litType$:t},i){let r;this.parts=[];let s=0,a=0;const n=e.length-1,o=this.parts,[d,c]=K(e,t);if(this.el=Q.createElement(d,i),q.currentNode=this.el.content,2===t||3===t){const e=this.el.content.firstChild;e.replaceWith(...e.childNodes)}for(;null!==(r=q.nextNode())&&o.length<n;){if(1===r.nodeType){if(r.hasAttributes())for(const e of r.getAttributeNames())if(e.endsWith(A)){const t=c[a++],i=r.getAttribute(e).split(E),n=/([.?@])?(.*)/.exec(t);o.push({type:1,index:s,name:n[2],strings:i,ctor:"."===n[1]?re:"?"===n[1]?se:"@"===n[1]?ae:ie}),r.removeAttribute(e)}else e.startsWith(E)&&(o.push({type:6,index:s}),r.removeAttribute(e));if(F.test(r.tagName)){const e=r.textContent.split(E),t=e.length-1;if(t>0){r.textContent=k?k.emptyScript:"";for(let i=0;i<t;i++)r.append(e[i],T()),q.nextNode(),o.push({type:2,index:++s});r.append(e[t],T())}}}else if(8===r.nodeType)if(r.data===S)o.push({type:2,index:s});else{let e=-1;for(;-1!==(e=r.data.indexOf(E,e+1));)o.push({type:7,index:s}),e+=E.length-1}s++}}static createElement(e,t){const i=D.createElement("template");return i.innerHTML=e,i}}function X(e,t,i=e,r){if(t===G)return t;let s=void 0!==r?i._$Co?.[r]:i._$Cl;const a=P(t)?void 0:t._$litDirective$;return s?.constructor!==a&&(s?._$AO?.(!1),void 0===a?s=void 0:(s=new a(e),s._$AT(e,i,r)),void 0!==r?(i._$Co??=[])[r]=s:i._$Cl=s),void 0!==s&&(t=X(e,s._$AS(e,t.values),s,r)),t}class ee{constructor(e,t){this._$AV=[],this._$AN=void 0,this._$AD=e,this._$AM=t}get parentNode(){return this._$AM.parentNode}get _$AU(){return this._$AM._$AU}u(e){const{el:{content:t},parts:i}=this._$AD,r=(e?.creationScope??D).importNode(t,!0);q.currentNode=r;let s=q.nextNode(),a=0,n=0,o=i[0];for(;void 0!==o;){if(a===o.index){let t;2===o.type?t=new te(s,s.nextSibling,this,e):1===o.type?t=new o.ctor(s,o.name,o.strings,this,e):6===o.type&&(t=new ne(s,this,e)),this._$AV.push(t),o=i[++n]}a!==o?.index&&(s=q.nextNode(),a++)}return q.currentNode=D,r}p(e){let t=0;for(const i of this._$AV)void 0!==i&&(void 0!==i.strings?(i._$AI(e,i,t),t+=i.strings.length-2):i._$AI(e[t])),t++}}class te{get _$AU(){return this._$AM?._$AU??this._$Cv}constructor(e,t,i,r){this.type=2,this._$AH=J,this._$AN=void 0,this._$AA=e,this._$AB=t,this._$AM=i,this.options=r,this._$Cv=r?.isConnected??!0}get parentNode(){let e=this._$AA.parentNode;const t=this._$AM;return void 0!==t&&11===e?.nodeType&&(e=t.parentNode),e}get startNode(){return this._$AA}get endNode(){return this._$AB}_$AI(e,t=this){e=X(this,e,t),P(e)?e===J||null==e||""===e?(this._$AH!==J&&this._$AR(),this._$AH=J):e!==this._$AH&&e!==G&&this._(e):void 0!==e._$litType$?this.$(e):void 0!==e.nodeType?this.T(e):(e=>L(e)||"function"==typeof e?.[Symbol.iterator])(e)?this.k(e):this._(e)}O(e){return this._$AA.parentNode.insertBefore(e,this._$AB)}T(e){this._$AH!==e&&(this._$AR(),this._$AH=this.O(e))}_(e){this._$AH!==J&&P(this._$AH)?this._$AA.nextSibling.data=e:this.T(D.createTextNode(e)),this._$AH=e}$(e){const{values:t,_$litType$:i}=e,r="number"==typeof i?this._$AC(e):(void 0===i.el&&(i.el=Q.createElement(Y(i.h,i.h[0]),this.options)),i);if(this._$AH?._$AD===r)this._$AH.p(t);else{const e=new ee(r,this),i=e.u(this.options);e.p(t),this.T(i),this._$AH=e}}_$AC(e){let t=Z.get(e.strings);return void 0===t&&Z.set(e.strings,t=new Q(e)),t}k(e){L(this._$AH)||(this._$AH=[],this._$AR());const t=this._$AH;let i,r=0;for(const s of e)r===t.length?t.push(i=new te(this.O(T()),this.O(T()),this,this.options)):i=t[r],i._$AI(s),r++;r<t.length&&(this._$AR(i&&i._$AB.nextSibling,r),t.length=r)}_$AR(e=this._$AA.nextSibling,t){for(this._$AP?.(!1,!0,t);e!==this._$AB;){const t=M(e).nextSibling;M(e).remove(),e=t}}setConnected(e){void 0===this._$AM&&(this._$Cv=e,this._$AP?.(e))}}class ie{get tagName(){return this.element.tagName}get _$AU(){return this._$AM._$AU}constructor(e,t,i,r,s){this.type=1,this._$AH=J,this._$AN=void 0,this.element=e,this.name=t,this._$AM=r,this.options=s,i.length>2||""!==i[0]||""!==i[1]?(this._$AH=Array(i.length-1).fill(new String),this.strings=i):this._$AH=J}_$AI(e,t=this,i,r){const s=this.strings;let a=!1;if(void 0===s)e=X(this,e,t,0),a=!P(e)||e!==this._$AH&&e!==G,a&&(this._$AH=e);else{const r=e;let n,o;for(e=s[0],n=0;n<s.length-1;n++)o=X(this,r[i+n],t,n),o===G&&(o=this._$AH[n]),a||=!P(o)||o!==this._$AH[n],o===J?e=J:e!==J&&(e+=(o??"")+s[n+1]),this._$AH[n]=o}a&&!r&&this.j(e)}j(e){e===J?this.element.removeAttribute(this.name):this.element.setAttribute(this.name,e??"")}}class re extends ie{constructor(){super(...arguments),this.type=3}j(e){this.element[this.name]=e===J?void 0:e}}class se extends ie{constructor(){super(...arguments),this.type=4}j(e){this.element.toggleAttribute(this.name,!!e&&e!==J)}}class ae extends ie{constructor(e,t,i,r,s){super(e,t,i,r,s),this.type=5}_$AI(e,t=this){if((e=X(this,e,t,0)??J)===G)return;const i=this._$AH,r=e===J&&i!==J||e.capture!==i.capture||e.once!==i.once||e.passive!==i.passive,s=e!==J&&(i===J||r);r&&this.element.removeEventListener(this.name,this,i),s&&this.element.addEventListener(this.name,this,e),this._$AH=e}handleEvent(e){"function"==typeof this._$AH?this._$AH.call(this.options?.host??this.element,e):this._$AH.handleEvent(e)}}class ne{constructor(e,t,i){this.element=e,this.type=6,this._$AN=void 0,this._$AM=t,this.options=i}get _$AU(){return this._$AM._$AU}_$AI(e){X(this,e)}}const oe=x.litHtmlPolyfillSupport;oe?.(Q,te),(x.litHtmlVersions??=[]).push("3.3.2");const de=globalThis;
+const x=globalThis,k=e=>e,M=x.trustedTypes,A=M?M.createPolicy("lit-html",{createHTML:e=>e}):void 0,C="$lit$",E=`lit$${Math.random().toFixed(9).slice(2)}$`,S="?"+E,H=`<${S}>`,D=document,T=()=>D.createComment(""),P=e=>null===e||"object"!=typeof e&&"function"!=typeof e,z=Array.isArray,L="[ \t\n\f\r]",O=/<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g,V=/-->/g,j=/>/g,W=RegExp(`>|${L}(?:([^\\s"'>=/]+)(${L}*=${L}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`,"g"),N=/'/g,U=/"/g,F=/^(?:script|style|textarea|title)$/i,R=e=>(t,...i)=>({_$litType$:e,strings:t,values:i}),I=R(1),B=R(2),G=Symbol.for("lit-noChange"),J=Symbol.for("lit-nothing"),Z=new WeakMap,q=D.createTreeWalker(D,129);function Y(e,t){if(!z(e)||!e.hasOwnProperty("raw"))throw Error("invalid template strings array");return void 0!==A?A.createHTML(t):t}const K=(e,t)=>{const i=e.length-1,r=[];let s,a=2===t?"<svg>":3===t?"<math>":"",n=O;for(let t=0;t<i;t++){const i=e[t];let o,d,c=-1,h=0;for(;h<i.length&&(n.lastIndex=h,d=n.exec(i),null!==d);)h=n.lastIndex,n===O?"!--"===d[1]?n=V:void 0!==d[1]?n=j:void 0!==d[2]?(F.test(d[2])&&(s=RegExp("</"+d[2],"g")),n=W):void 0!==d[3]&&(n=W):n===W?">"===d[0]?(n=s??O,c=-1):void 0===d[1]?c=-2:(c=n.lastIndex-d[2].length,o=d[1],n=void 0===d[3]?W:'"'===d[3]?U:N):n===U||n===N?n=W:n===V||n===j?n=O:(n=W,s=void 0);const l=n===W&&e[t+1].startsWith("/>")?" ":"";a+=n===O?i+H:c>=0?(r.push(o),i.slice(0,c)+C+i.slice(c)+E+l):i+E+(-2===c?t:l)}return[Y(e,a+(e[i]||"<?>")+(2===t?"</svg>":3===t?"</math>":"")),r]};class Q{constructor({strings:e,_$litType$:t},i){let r;this.parts=[];let s=0,a=0;const n=e.length-1,o=this.parts,[d,c]=K(e,t);if(this.el=Q.createElement(d,i),q.currentNode=this.el.content,2===t||3===t){const e=this.el.content.firstChild;e.replaceWith(...e.childNodes)}for(;null!==(r=q.nextNode())&&o.length<n;){if(1===r.nodeType){if(r.hasAttributes())for(const e of r.getAttributeNames())if(e.endsWith(C)){const t=c[a++],i=r.getAttribute(e).split(E),n=/([.?@])?(.*)/.exec(t);o.push({type:1,index:s,name:n[2],strings:i,ctor:"."===n[1]?re:"?"===n[1]?se:"@"===n[1]?ae:ie}),r.removeAttribute(e)}else e.startsWith(E)&&(o.push({type:6,index:s}),r.removeAttribute(e));if(F.test(r.tagName)){const e=r.textContent.split(E),t=e.length-1;if(t>0){r.textContent=M?M.emptyScript:"";for(let i=0;i<t;i++)r.append(e[i],T()),q.nextNode(),o.push({type:2,index:++s});r.append(e[t],T())}}}else if(8===r.nodeType)if(r.data===S)o.push({type:2,index:s});else{let e=-1;for(;-1!==(e=r.data.indexOf(E,e+1));)o.push({type:7,index:s}),e+=E.length-1}s++}}static createElement(e,t){const i=D.createElement("template");return i.innerHTML=e,i}}function X(e,t,i=e,r){if(t===G)return t;let s=void 0!==r?i._$Co?.[r]:i._$Cl;const a=P(t)?void 0:t._$litDirective$;return s?.constructor!==a&&(s?._$AO?.(!1),void 0===a?s=void 0:(s=new a(e),s._$AT(e,i,r)),void 0!==r?(i._$Co??=[])[r]=s:i._$Cl=s),void 0!==s&&(t=X(e,s._$AS(e,t.values),s,r)),t}class ee{constructor(e,t){this._$AV=[],this._$AN=void 0,this._$AD=e,this._$AM=t}get parentNode(){return this._$AM.parentNode}get _$AU(){return this._$AM._$AU}u(e){const{el:{content:t},parts:i}=this._$AD,r=(e?.creationScope??D).importNode(t,!0);q.currentNode=r;let s=q.nextNode(),a=0,n=0,o=i[0];for(;void 0!==o;){if(a===o.index){let t;2===o.type?t=new te(s,s.nextSibling,this,e):1===o.type?t=new o.ctor(s,o.name,o.strings,this,e):6===o.type&&(t=new ne(s,this,e)),this._$AV.push(t),o=i[++n]}a!==o?.index&&(s=q.nextNode(),a++)}return q.currentNode=D,r}p(e){let t=0;for(const i of this._$AV)void 0!==i&&(void 0!==i.strings?(i._$AI(e,i,t),t+=i.strings.length-2):i._$AI(e[t])),t++}}class te{get _$AU(){return this._$AM?._$AU??this._$Cv}constructor(e,t,i,r){this.type=2,this._$AH=J,this._$AN=void 0,this._$AA=e,this._$AB=t,this._$AM=i,this.options=r,this._$Cv=r?.isConnected??!0}get parentNode(){let e=this._$AA.parentNode;const t=this._$AM;return void 0!==t&&11===e?.nodeType&&(e=t.parentNode),e}get startNode(){return this._$AA}get endNode(){return this._$AB}_$AI(e,t=this){e=X(this,e,t),P(e)?e===J||null==e||""===e?(this._$AH!==J&&this._$AR(),this._$AH=J):e!==this._$AH&&e!==G&&this._(e):void 0!==e._$litType$?this.$(e):void 0!==e.nodeType?this.T(e):(e=>z(e)||"function"==typeof e?.[Symbol.iterator])(e)?this.k(e):this._(e)}O(e){return this._$AA.parentNode.insertBefore(e,this._$AB)}T(e){this._$AH!==e&&(this._$AR(),this._$AH=this.O(e))}_(e){this._$AH!==J&&P(this._$AH)?this._$AA.nextSibling.data=e:this.T(D.createTextNode(e)),this._$AH=e}$(e){const{values:t,_$litType$:i}=e,r="number"==typeof i?this._$AC(e):(void 0===i.el&&(i.el=Q.createElement(Y(i.h,i.h[0]),this.options)),i);if(this._$AH?._$AD===r)this._$AH.p(t);else{const e=new ee(r,this),i=e.u(this.options);e.p(t),this.T(i),this._$AH=e}}_$AC(e){let t=Z.get(e.strings);return void 0===t&&Z.set(e.strings,t=new Q(e)),t}k(e){z(this._$AH)||(this._$AH=[],this._$AR());const t=this._$AH;let i,r=0;for(const s of e)r===t.length?t.push(i=new te(this.O(T()),this.O(T()),this,this.options)):i=t[r],i._$AI(s),r++;r<t.length&&(this._$AR(i&&i._$AB.nextSibling,r),t.length=r)}_$AR(e=this._$AA.nextSibling,t){for(this._$AP?.(!1,!0,t);e!==this._$AB;){const t=k(e).nextSibling;k(e).remove(),e=t}}setConnected(e){void 0===this._$AM&&(this._$Cv=e,this._$AP?.(e))}}class ie{get tagName(){return this.element.tagName}get _$AU(){return this._$AM._$AU}constructor(e,t,i,r,s){this.type=1,this._$AH=J,this._$AN=void 0,this.element=e,this.name=t,this._$AM=r,this.options=s,i.length>2||""!==i[0]||""!==i[1]?(this._$AH=Array(i.length-1).fill(new String),this.strings=i):this._$AH=J}_$AI(e,t=this,i,r){const s=this.strings;let a=!1;if(void 0===s)e=X(this,e,t,0),a=!P(e)||e!==this._$AH&&e!==G,a&&(this._$AH=e);else{const r=e;let n,o;for(e=s[0],n=0;n<s.length-1;n++)o=X(this,r[i+n],t,n),o===G&&(o=this._$AH[n]),a||=!P(o)||o!==this._$AH[n],o===J?e=J:e!==J&&(e+=(o??"")+s[n+1]),this._$AH[n]=o}a&&!r&&this.j(e)}j(e){e===J?this.element.removeAttribute(this.name):this.element.setAttribute(this.name,e??"")}}class re extends ie{constructor(){super(...arguments),this.type=3}j(e){this.element[this.name]=e===J?void 0:e}}class se extends ie{constructor(){super(...arguments),this.type=4}j(e){this.element.toggleAttribute(this.name,!!e&&e!==J)}}class ae extends ie{constructor(e,t,i,r,s){super(e,t,i,r,s),this.type=5}_$AI(e,t=this){if((e=X(this,e,t,0)??J)===G)return;const i=this._$AH,r=e===J&&i!==J||e.capture!==i.capture||e.once!==i.once||e.passive!==i.passive,s=e!==J&&(i===J||r);r&&this.element.removeEventListener(this.name,this,i),s&&this.element.addEventListener(this.name,this,e),this._$AH=e}handleEvent(e){"function"==typeof this._$AH?this._$AH.call(this.options?.host??this.element,e):this._$AH.handleEvent(e)}}class ne{constructor(e,t,i){this.element=e,this.type=6,this._$AN=void 0,this._$AM=t,this.options=i}get _$AU(){return this._$AM._$AU}_$AI(e){X(this,e)}}const oe=x.litHtmlPolyfillSupport;oe?.(Q,te),(x.litHtmlVersions??=[]).push("3.3.2");const de=globalThis;
 /**
  * @license
  * Copyright 2017 Google LLC
@@ -36,37 +36,37 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
  * @license
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
- */function ge(e){return me({...e,state:!0,attribute:!1})}const fe={entity_mode:"auto",show_temperature:!0,show_humidity:!0,show_pressure:!0,show_wind:!0,show_rain:!0,show_uv:!0,show_solar:!0,display_mode:"normal",data_view:"live",history_period:"day",show_wind_arrows:!0,enable_warnings:!1,show_trends:!0,show_sparklines:!0,show_forecast:!1,show_min_max:!0,trend_period:"1h",hero_metric:"auto",show_weather_condition:!0,color_theme:"auto",use_time_based_theme:!0,enable_animations:!0,grid_layout:"auto",card_style:"glass",warnings:{wind_speed:{enabled:!1,threshold:50,message:"High wind speed! Consider closing shades and securing outdoor items."},temperature:{enabled:!1,high_threshold:35,low_threshold:0,message_high:"High temperature! Stay hydrated and avoid direct sunlight.",message_low:"Low temperature! Watch for frost and freezing conditions."},uv:{enabled:!1,threshold:8,message:"Very high UV index! Use sun protection and limit outdoor exposure."},rain_rate:{enabled:!1,threshold:10,message:"Heavy rain! Check for flooding and secure outdoor items."}}},_e=["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"],we=[{max:2,label:"Low",color:"#289500"},{max:5,label:"Moderate",color:"#F7E400"},{max:7,label:"High",color:"#F85900"},{max:10,label:"Very High",color:"#D8001D"},{max:1/0,label:"Extreme",color:"#6B49C8"}],ve={temperature:["temperature","temp","outdoor_temp","temperatur","aussentemperatur","außentemperatur"],humidity:["humidity","humid","feuchtigkeit","luftfeuchtigkeit"],pressure:["pressure","absolute_pressure","relative_pressure","druck","luftdruck"],wind_speed:["wind_speed","windspeed","geschwindigkeit","windgeschwindigkeit"],wind_direction:["wind_direction","wind_bearing","winddirection","richtung","windrichtung"],wind_gust:["gust","wind_gust","gust_speed","geschwindigkeit_2","boe","windböe","windboe"],rain:["rain_total","daily_rain","rain","regen","niederschlag","regenmenge"],rain_rate:["rain_rate","rainrate","rain_piezo","regenrate","niederschlagsrate"],moisture:["moisture","wetness","feuchte","nass","trocken","regen_sensor","rain_sensor"],dew_point:["dew_point","dewpoint","taupunkt","dew"],uv_index:["uv_index","uvi","uv"],solar_radiation:["solar_radiation","solar","light","solarstrahlung","sonnenstrahlung","beleuchtungsstarke","beleuchtungsstärke","licht"]},ye={temperature:"Temperature",humidity:"Humidity",pressure:"Pressure",wind_speed:"Wind Speed",wind_direction:"Wind Direction",wind_gust:"Wind Gust",rain:"Rain",rain_rate:"Rain Rate",moisture:"Moisture (Wetness)",dew_point:"Dew Point",uv_index:"UV Index",solar_radiation:"Solar Radiation"},$e={sunny:"☀️","partly-cloudy":"⛅",cloudy:"☁️",rainy:"🌧️",stormy:"⛈️",windy:"💨","clear-night":"🌙",unknown:"🌤️"},be={temperature:{significant:.3,major:2},humidity:{significant:2,major:10},pressure:{significant:.5,major:3},wind_speed:{significant:2,major:10},wind_gust:{significant:3,major:15},rain:{significant:.2,major:2},rain_rate:{significant:.5,major:5},uv_index:{significant:.5,major:2},solar_radiation:{significant:50,major:200},dew_point:{significant:.5,major:2}},xe={temperature:{min:-10,max:40,unit:"°C"},humidity:{min:0,max:100,unit:"%"},pressure:{min:970,max:1050,unit:"hPa"},wind_speed:{min:0,max:100,unit:"km/h"},rain:{min:0,max:50,unit:"mm"},uv_index:{min:0,max:11,unit:""},solar_radiation:{min:0,max:1200,unit:"W/m²"}},Me=30,ke=2,Ce=3,Ae=e=>B`
+ */function ge(e){return me({...e,state:!0,attribute:!1})}const fe={entity_mode:"auto",show_temperature:!0,show_humidity:!0,show_pressure:!0,show_wind:!0,show_rain:!0,show_uv:!0,show_solar:!0,display_mode:"normal",data_view:"live",history_period:"day",show_wind_arrows:!0,enable_warnings:!1,show_trends:!0,show_sparklines:!0,show_forecast:!1,show_min_max:!0,trend_period:"1h",hero_metric:"auto",show_weather_condition:!0,color_theme:"auto",use_time_based_theme:!0,enable_animations:!0,grid_layout:"auto",card_style:"glass",warnings:{wind_speed:{enabled:!1,threshold:50,message:"High wind speed! Consider closing shades and securing outdoor items."},temperature:{enabled:!1,high_threshold:35,low_threshold:0,message_high:"High temperature! Stay hydrated and avoid direct sunlight.",message_low:"Low temperature! Watch for frost and freezing conditions."},uv:{enabled:!1,threshold:8,message:"Very high UV index! Use sun protection and limit outdoor exposure."},rain_rate:{enabled:!1,threshold:10,message:"Heavy rain! Check for flooding and secure outdoor items."}}},_e=["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"],we=[{max:2,label:"Low",color:"#289500"},{max:5,label:"Moderate",color:"#F7E400"},{max:7,label:"High",color:"#F85900"},{max:10,label:"Very High",color:"#D8001D"},{max:1/0,label:"Extreme",color:"#6B49C8"}],ve={temperature:["temperature","temp","outdoor_temp","temperatur","aussentemperatur","außentemperatur"],humidity:["humidity","humid","feuchtigkeit","luftfeuchtigkeit"],pressure:["pressure","absolute_pressure","relative_pressure","druck","luftdruck"],wind_speed:["wind_speed","windspeed","geschwindigkeit","windgeschwindigkeit"],wind_direction:["wind_direction","wind_bearing","winddirection","richtung","windrichtung"],wind_gust:["gust","wind_gust","gust_speed","geschwindigkeit_2","boe","windböe","windboe"],rain:["rain_total","daily_rain","rain","regen","niederschlag","regenmenge"],rain_rate:["rain_rate","rainrate","rain_piezo","regenrate","niederschlagsrate"],moisture:["moisture","wetness","feuchte","nass","trocken","regen_sensor","rain_sensor"],dew_point:["dew_point","dewpoint","taupunkt","dew"],uv_index:["uv_index","uvi","uv"],solar_radiation:["solar_radiation","solar","light","solarstrahlung","sonnenstrahlung","beleuchtungsstarke","beleuchtungsstärke","licht"]},ye={temperature:"Temperature",humidity:"Humidity",pressure:"Pressure",wind_speed:"Wind Speed",wind_direction:"Wind Direction",wind_gust:"Wind Gust",rain:"Rain",rain_rate:"Rain Rate",moisture:"Moisture (Wetness)",dew_point:"Dew Point",uv_index:"UV Index",solar_radiation:"Solar Radiation"},$e={sunny:"☀️","partly-cloudy":"⛅",cloudy:"☁️",rainy:"🌧️",stormy:"⛈️",windy:"💨","clear-night":"🌙",unknown:"🌤️"},be={temperature:{significant:.3,major:2},humidity:{significant:2,major:10},pressure:{significant:.5,major:3},wind_speed:{significant:2,major:10},wind_gust:{significant:3,major:15},rain:{significant:.2,major:2},rain_rate:{significant:.5,major:5},uv_index:{significant:.5,major:2},solar_radiation:{significant:50,major:200},dew_point:{significant:.5,major:2}},xe={temperature:{min:-10,max:40,unit:"°C"},humidity:{min:0,max:100,unit:"%"},pressure:{min:970,max:1050,unit:"hPa"},wind_speed:{min:0,max:100,unit:"km/h"},rain:{min:0,max:50,unit:"mm"},uv_index:{min:0,max:11,unit:""},solar_radiation:{min:0,max:1200,unit:"W/m²"}},ke=30,Me=2,Ae=3,Ce=e=>B`
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
        fill="none" stroke="currentColor" stroke-width="1.8"
        stroke-linecap="round" stroke-linejoin="round"
        style="width:1em;height:1em;vertical-align:-0.125em;">
     ${e}
   </svg>
-`,Ee=Ae(B`
+`,Ee=Ce(B`
   <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0Z"/>
   <circle cx="11.5" cy="17.5" r="1.5" fill="currentColor" stroke="none"/>
-`),Se=Ae(B`
+`),Se=Ce(B`
   <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0L12 2.69z"/>
-`),He=Ae(B`
+`),He=Ce(B`
   <path d="M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18Z"/>
   <path d="M12 12l-3.5-3.5"/>
   <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
   <path d="M5.63 16.5h12.74" opacity="0.4"/>
-`),De=Ae(B`
+`),De=Ce(B`
   <path d="M2 12h13a3 3 0 1 0-3-3"/>
   <path d="M2 6h8a3 3 0 0 1 3 3"/>
   <path d="M2 18h10a3 3 0 1 0-3-3"/>
-`),Te=Ae(B`
+`),Te=Ce(B`
   <circle cx="12" cy="12" r="9"/>
   <polygon points="12,5 14,13 12,11 10,13" fill="currentColor" stroke="none"/>
   <polygon points="12,19 10,13 12,15 14,13" opacity="0.35" fill="currentColor" stroke="none"/>
-`),Pe=Ae(B`
+`),Pe=Ce(B`
   <path d="M2 12h13a3 3 0 1 0-3-3"/>
   <path d="M2 6h8a3 3 0 0 1 3 3"/>
   <path d="M2 18h10a3 3 0 1 0-3-3"/>
   <path d="M17 8l2-2m0 4l2-2" opacity="0.5"/>
-`),Le=Ae(B`
+`),ze=Ce(B`
   <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2 8.535"/>
   <path d="M8 19v1"/>
   <path d="M8 14v1"/>
@@ -74,11 +74,11 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
   <path d="M16 14v1"/>
   <path d="M12 21v1"/>
   <path d="M12 16v1"/>
-`),Oe=Ae(B`
+`),Le=Ce(B`
   <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2 8.535"/>
   <path d="M9.2 22l3-7"/>
   <path d="M12.8 22l3-7"/>
-`),ze=Ae(B`
+`),Oe=Ce(B`
   <circle cx="12" cy="12" r="4"/>
   <path d="M12 2v2"/>
   <path d="M12 20v2"/>
@@ -88,7 +88,7 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
   <path d="M20 12h2"/>
   <path d="M4.93 19.07l1.41-1.41"/>
   <path d="M17.66 6.34l1.41-1.41"/>
-`),Ve=Ae(B`
+`),Ve=Ce(B`
   <circle cx="12" cy="12" r="4"/>
   <path d="M12 3v1"/>
   <path d="M12 20v1"/>
@@ -100,72 +100,72 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
   <path d="M17.7 6.3l.7-.7"/>
   <path d="M15 9l2-2" opacity="0.4"/>
   <path d="M16 12h3" opacity="0.4"/>
-`),je=Ae(B`
+`),je=Ce(B`
   <circle cx="12" cy="5" r="2.5"/>
   <path d="M12 7.5v5"/>
   <path d="M8 20l4-7.5 4 7.5"/>
   <path d="M14 14.76V3.5" opacity="0" />
-`),We=Ae(B`
+`),We=Ce(B`
   <path d="M9.5 5l3.18 3.18a4.5 4.5 0 1 1-6.36 0L9.5 5Z"/>
   <path d="M16 12l1.77 1.77a2.5 2.5 0 1 1-3.54 0L16 12Z"/>
-`),Ne=Ae(B`
+`),Ne=Ce(B`
   <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0L12 2.69z"/>
   <path d="M8 14h8" opacity="0.4"/>
   <path d="M9 17h6" opacity="0.4"/>
-`),Ue=Ae(B`
+`),Ue=Ce(B`
   <path d="M3 3v18h18"/>
   <path d="M7 16l4-6 4 4 5-8"/>
-`),Fe=Ae(B`
+`),Fe=Ce(B`
   <circle cx="15.5" cy="6" r="2"/>
   <path d="M3 6h10.5M17.5 6H21"/>
   <circle cx="8.5" cy="12" r="2"/>
   <path d="M3 12h3.5M10.5 12H21"/>
   <circle cx="15.5" cy="18" r="2"/>
   <path d="M3 18h10.5M17.5 18H21"/>
-`),Re=Ae(B`
+`),Re=Ce(B`
   <polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/>
-`),Ie=Ae(B`
+`),Ie=Ce(B`
   <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/>
   <line x1="12" y1="9" x2="12" y2="13"/>
   <circle cx="12" cy="17" r="0.5" fill="currentColor" stroke="none"/>
-`),Be=Ae(B`
+`),Be=Ce(B`
   <path d="M12 22v-5"/>
   <path d="M9 7V2"/>
   <path d="M15 7V2"/>
   <path d="M6 13V8a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4Z"/>
-`),Ge=Ae(B`
+`),Ge=Ce(B`
   <path d="M12 20h9"/>
   <path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838.838-2.872a2 2 0 0 1 .506-.855Z"/>
-`),Je=Ae(B`
+`),Je=Ce(B`
   <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>
   <circle cx="12" cy="12" r="3"/>
-`),Ze=Ae(B`
+`),Ze=Ce(B`
   <rect x="3" y="3" width="18" height="18" rx="2"/>
   <path d="M3 9h18"/>
   <path d="M9 21V9"/>
-`),qe=Ae(B`
+`),qe=Ce(B`
   <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/>
   <path d="M9 18h6"/>
   <path d="M10 22h4"/>
-`),Ye=Ae(B`
+`),Ye=Ce(B`
   <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
   <circle cx="12" cy="12" r="3"/>
-`),Ke=Ae(B`
+`),Ke=Ce(B`
   <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
   <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
-`),Qe=Ae(B`
+`),Qe=Ce(B`
   <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
   <path d="M20 3v4"/>
   <path d="M22 5h-4"/>
-`),Xe=Ae(B`
+`),Xe=Ce(B`
   <path d="M3 3v18h18"/>
   <path d="m19 9-5 5-4-4-3 3"/>
-`),et=Ae(B`
+`),et=Ce(B`
   <rect x="3" y="4" width="18" height="18" rx="2"/>
   <path d="M16 2v4"/>
   <path d="M8 2v4"/>
   <path d="M3 10h18"/>
-`),tt=Ae(B`
+`),tt=Ce(B`
   <path d="M2 12h20"/>
   <path d="M12 2v20"/>
   <path d="m4.93 4.93 14.14 14.14"/>
@@ -174,7 +174,7 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
   <path d="m12 8.5 5-5"/>
   <path d="m7 20.5 5-5"/>
   <path d="m12 15.5 5 5"/>
-`),it={temperature:Ee,humidity:Se,pressure:He,wind_speed:De,wind_direction:Te,wind_gust:Pe,rain:Le,rain_rate:Oe,uv_index:ze,solar_radiation:Ve,feels_like:je,dew_point:We,moisture:Ne},rt=Ue;function st(e,t="°C"){return`${Math.round(10*e)/10}${t}`}function at(e,t="km/h"){return`${Math.round(10*e)/10} ${t}`}function nt(e,t="mm"){return`${Math.round(100*e)/100} ${t}`}function ot(e){return e*Math.PI/180}function dt(e,t,i,r="1h"){if(0===t.length)return{direction:"stable",percentChange:0,absoluteChange:0,timeframe:r,previousValue:e};const s=t[0].value,a=e-s,n=0!==s?a/s*100:0,o=be[i]||{significant:.1};let d="stable";return Math.abs(a)>=o.significant&&(d=a>0?"up":"down"),{direction:d,percentChange:Math.round(10*n)/10,absoluteChange:Math.round(10*a)/10,timeframe:r,previousValue:s}}function ct(e,t){const i=be[e]||{major:1};return Math.abs(t)>=i.major}function ht(e=new Date){const t=e.getHours();return t>=5&&t<8?"dawn":t>=8&&t<18?"day":t>=18&&t<21?"dusk":"night"}function lt(e){const t="night"===ht();if(void 0!==e.rain_rate&&e.rain_rate>0)return void 0!==e.wind_speed&&e.wind_speed>50?"stormy":"rainy";if(void 0!==e.wind_speed&&e.wind_speed>40)return"windy";if(void 0!==e.solar_radiation){const i=function(e){if(e<6||e>20)return 0;const t=Math.abs(e-12);return Math.max(0,1e3*(1-t/8))}((new Date).getHours()),r=i>0?e.solar_radiation/i:1;return r>.7?t?"clear-night":"sunny":r>.3?"partly-cloudy":"cloudy"}return t?"clear-night":"sunny"}function pt(e,t){switch(t){case"temperature":case"feels_like":case"dew_point":return st(e);case"humidity":return`${Math.round(e)}%`;case"pressure":return function(e,t="hPa"){return`${Math.round(e)} ${t}`}(e);case"wind_speed":case"wind_gust":return at(e);case"rain":case"rain_rate":return nt(e);case"uv_index":default:return""+Math.round(10*e)/10;case"solar_radiation":return`${Math.round(e)} W/m²`}}let ut=class extends ce{constructor(){super(...arguments),this.windDirection=0,this.windSpeed=0,this.showArrows=!0,this.compact=!1,this.animate=!0}render(){const e=this.compact?80:120,t=e/2,i=e/2-8;return I`
+`),it={temperature:Ee,humidity:Se,pressure:He,wind_speed:De,wind_direction:Te,wind_gust:Pe,rain:ze,rain_rate:Le,uv_index:Oe,solar_radiation:Ve,feels_like:je,dew_point:We,moisture:Ne},rt=Ue;function st(e,t="°C"){return`${Math.round(10*e)/10}${t}`}function at(e,t="km/h"){return`${Math.round(10*e)/10} ${t}`}function nt(e,t="mm"){return`${Math.round(100*e)/100} ${t}`}function ot(e){return e*Math.PI/180}function dt(e,t,i,r="1h"){if(0===t.length)return{direction:"stable",percentChange:0,absoluteChange:0,timeframe:r,previousValue:e};const s=t[0].value,a=e-s,n=0!==s?a/s*100:0,o=be[i]||{significant:.1};let d="stable";return Math.abs(a)>=o.significant&&(d=a>0?"up":"down"),{direction:d,percentChange:Math.round(10*n)/10,absoluteChange:Math.round(10*a)/10,timeframe:r,previousValue:s}}function ct(e,t){const i=be[e]||{major:1};return Math.abs(t)>=i.major}function ht(e=new Date){const t=e.getHours();return t>=5&&t<8?"dawn":t>=8&&t<18?"day":t>=18&&t<21?"dusk":"night"}function lt(e){const t="night"===ht();if(void 0!==e.rain_rate&&e.rain_rate>0)return void 0!==e.wind_speed&&e.wind_speed>50?"stormy":"rainy";if(void 0!==e.wind_speed&&e.wind_speed>40)return"windy";if(void 0!==e.solar_radiation){const i=function(e){if(e<6||e>20)return 0;const t=Math.abs(e-12);return Math.max(0,1e3*(1-t/8))}((new Date).getHours()),r=i>0?e.solar_radiation/i:1;return r>.7?t?"clear-night":"sunny":r>.3?"partly-cloudy":"cloudy"}return t?"clear-night":"sunny"}function pt(e,t){switch(t){case"temperature":case"feels_like":case"dew_point":return st(e);case"humidity":return`${Math.round(e)}%`;case"pressure":return function(e,t="hPa"){return`${Math.round(e)} ${t}`}(e);case"wind_speed":case"wind_gust":return at(e);case"rain":case"rain_rate":return nt(e);case"uv_index":default:return""+Math.round(10*e)/10;case"solar_radiation":return`${Math.round(e)} W/m²`}}let ut=class extends ce{constructor(){super(...arguments),this.windDirection=0,this.windSpeed=0,this.showArrows=!0,this.compact=!1,this.animate=!0}render(){const e=this.compact?80:120,t=e/2,i=e/2-8;return I`
       <div class="compass-container ${this.compact?"compact":""}">
         <svg width="${e}" height="${e}" viewBox="0 0 ${e} ${e}" class="compass-svg">
           <!-- Background glow -->
@@ -377,7 +377,7 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
         /* Static glow instead of costly infinite animation */
         filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.5));
       }
-    `}};var mt,gt;e([me({type:Number})],ut.prototype,"windDirection",void 0),e([me({type:Number})],ut.prototype,"windSpeed",void 0),e([me({type:Number})],ut.prototype,"windDirectionAvg",void 0),e([me({type:Boolean})],ut.prototype,"showArrows",void 0),e([me({type:Boolean})],ut.prototype,"compact",void 0),e([me({type:Boolean})],ut.prototype,"animate",void 0),ut=e([le("wind-compass")],ut),function(e){e.language="language",e.system="system",e.comma_decimal="comma_decimal",e.decimal_comma="decimal_comma",e.space_comma="space_comma",e.none="none"}(mt||(mt={})),function(e){e.language="language",e.system="system",e.am_pm="12",e.twenty_four="24"}(gt||(gt={}));var ft=function(e,t,i,r){r=r||{},i=null==i?{}:i;var s=new Event(t,{bubbles:void 0===r.bubbles||r.bubbles,cancelable:Boolean(r.cancelable),composed:void 0===r.composed||r.composed});return s.detail=i,e.dispatchEvent(s),s};const _t=[{name:"entity_mode",selector:{select:{options:[{value:"auto",label:"Auto (Use Device)"},{value:"manual",label:"Manual (Select Individual Entities)"}],mode:"dropdown"}}}],wt=[{name:"device_id",selector:{device:{}}}],vt=[{name:"name",selector:{text:{}}}],yt=[{name:"display_mode",selector:{select:{options:[{value:"normal",label:"Normal - Full layout with all details"},{value:"compact",label:"Compact - Space-efficient grid"},{value:"hero",label:"Hero - Featured metric with large display"},{value:"minimal",label:"Minimal - Single line summary"}],mode:"dropdown"}}}],$t=[{name:"card_style",selector:{select:{options:[{value:"glass",label:"Glass - Modern glassmorphism with gradients"},{value:"solid",label:"Solid - Traditional card background"},{value:"minimal",label:"Minimal - Transparent, no background"}],mode:"dropdown"}}}],bt=[{name:"data_view",selector:{select:{options:[{value:"live",label:"Live Data"},{value:"history",label:"Historical Data"}],mode:"dropdown"}}}],xt=[{name:"history_period",selector:{select:{options:[{value:"day",label:"Day"},{value:"week",label:"Week"},{value:"month",label:"Month"},{value:"year",label:"Year"}],mode:"dropdown"}}}],Mt=[{name:"trend_period",selector:{select:{options:[{value:"1h",label:"1 Hour"},{value:"3h",label:"3 Hours"},{value:"6h",label:"6 Hours"},{value:"12h",label:"12 Hours"},{value:"24h",label:"24 Hours"}],mode:"dropdown"}}}],kt=[{name:"hero_metric",selector:{select:{options:[{value:"auto",label:"Auto - Select most significant"},{value:"temperature",label:"Temperature"}],mode:"dropdown"}}}],Ct=[{name:"show_temperature",selector:{boolean:{}}},{name:"show_humidity",selector:{boolean:{}}},{name:"show_pressure",selector:{boolean:{}}},{name:"show_wind",selector:{boolean:{}}},{name:"show_wind_arrows",selector:{boolean:{}}},{name:"show_rain",selector:{boolean:{}}},{name:"show_uv",selector:{boolean:{}}},{name:"show_solar",selector:{boolean:{}}}],At=[{name:"show_trends",selector:{boolean:{}}},{name:"show_sparklines",selector:{boolean:{}}},{name:"show_min_max",selector:{boolean:{}}},{name:"show_weather_condition",selector:{boolean:{}}}],Et=[{name:"enable_animations",selector:{boolean:{}}}],St=[{name:"enable_warnings",selector:{boolean:{}}}],Ht=Object.keys(ye).map(e=>({name:`entities_${e}`,selector:{entity:{domain:"sensor"}}}));let Dt=class extends ce{constructor(){super(...arguments),this._activeTab="data",this._computeLabel=e=>({device_id:"Weather Station Device",name:"Card Name",entity_mode:"Entity Mode",display_mode:"Display Mode",card_style:"Card Style",data_view:"Default View",history_period:"History Period",trend_period:"Trend Comparison Period",hero_metric:"Hero Metric (for Hero mode)",show_temperature:"Show Temperature",show_humidity:"Show Humidity",show_pressure:"Show Pressure",show_wind:"Show Wind",show_wind_arrows:"Show Wind Compass",show_rain:"Show Rain",show_uv:"Show UV Index",show_solar:"Show Solar Radiation",show_trends:"Show Trend Indicators",show_sparklines:"Show Mini Charts (Sparklines)",show_min_max:"Show Min/Max Values",show_weather_condition:"Show Weather Condition",enable_animations:"Enable Animations",enable_warnings:"Enable Weather Warnings",...Object.fromEntries(Object.entries(ye).map(([e,t])=>[`entities_${e}`,t]))}[e.name]||e.name)}setConfig(e){this._config=e}connectedCallback(){super.connectedCallback(),this._loadHaForm()}async _loadHaForm(){if(customElements.get("ha-form"))return;const e=await(window.loadCardHelpers?.());if(!e)return;const t=await e.createCardElement({type:"entity",entity:"sun.sun"});t&&await(t.getConfigElement?.())}_getFormData(){const e={entity_mode:this._config.entity_mode||"auto",device_id:this._config.device_id||"",name:this._config.name||"",display_mode:this._config.display_mode||"normal",card_style:this._config.card_style||"glass",data_view:this._config.data_view||"live",history_period:this._config.history_period||"day",trend_period:this._config.trend_period||"1h",hero_metric:this._config.hero_metric||"auto",show_temperature:!1!==this._config.show_temperature,show_humidity:!1!==this._config.show_humidity,show_pressure:!1!==this._config.show_pressure,show_wind:!1!==this._config.show_wind,show_wind_arrows:!1!==this._config.show_wind_arrows,show_rain:!1!==this._config.show_rain,show_uv:!1!==this._config.show_uv,show_solar:!1!==this._config.show_solar,show_trends:!1!==this._config.show_trends,show_sparklines:!1!==this._config.show_sparklines,show_min_max:!1!==this._config.show_min_max,show_weather_condition:!1!==this._config.show_weather_condition,enable_animations:!1!==this._config.enable_animations,enable_warnings:this._config.enable_warnings||!1};return this._config.entities&&Object.entries(this._config.entities).forEach(([t,i])=>{e[`entities_${t}`]=i||""}),e}render(){return this.hass&&this._config?I`
+    `}};var mt,gt;e([me({type:Number})],ut.prototype,"windDirection",void 0),e([me({type:Number})],ut.prototype,"windSpeed",void 0),e([me({type:Number})],ut.prototype,"windDirectionAvg",void 0),e([me({type:Boolean})],ut.prototype,"showArrows",void 0),e([me({type:Boolean})],ut.prototype,"compact",void 0),e([me({type:Boolean})],ut.prototype,"animate",void 0),ut=e([le("wind-compass")],ut),function(e){e.language="language",e.system="system",e.comma_decimal="comma_decimal",e.decimal_comma="decimal_comma",e.space_comma="space_comma",e.none="none"}(mt||(mt={})),function(e){e.language="language",e.system="system",e.am_pm="12",e.twenty_four="24"}(gt||(gt={}));var ft=function(e,t,i,r){r=r||{},i=null==i?{}:i;var s=new Event(t,{bubbles:void 0===r.bubbles||r.bubbles,cancelable:Boolean(r.cancelable),composed:void 0===r.composed||r.composed});return s.detail=i,e.dispatchEvent(s),s};const _t=[{name:"entity_mode",selector:{select:{options:[{value:"auto",label:"Auto (Use Device)"},{value:"manual",label:"Manual (Select Individual Entities)"}],mode:"dropdown"}}}],wt=[{name:"device_id",selector:{device:{}}}],vt=[{name:"name",selector:{text:{}}}],yt=[{name:"display_mode",selector:{select:{options:[{value:"normal",label:"Normal - Full layout with all details"},{value:"compact",label:"Compact - Space-efficient grid"},{value:"hero",label:"Hero - Featured metric with large display"},{value:"minimal",label:"Minimal - Single line summary"}],mode:"dropdown"}}}],$t=[{name:"card_style",selector:{select:{options:[{value:"glass",label:"Glass - Modern glassmorphism with gradients"},{value:"solid",label:"Solid - Traditional card background"},{value:"minimal",label:"Minimal - Transparent, no background"}],mode:"dropdown"}}}],bt=[{name:"data_view",selector:{select:{options:[{value:"live",label:"Live Data"},{value:"history",label:"Historical Data"}],mode:"dropdown"}}}],xt=[{name:"history_period",selector:{select:{options:[{value:"day",label:"Day"},{value:"week",label:"Week"},{value:"month",label:"Month"},{value:"year",label:"Year"}],mode:"dropdown"}}}],kt=[{name:"trend_period",selector:{select:{options:[{value:"1h",label:"1 Hour"},{value:"3h",label:"3 Hours"},{value:"6h",label:"6 Hours"},{value:"12h",label:"12 Hours"},{value:"24h",label:"24 Hours"}],mode:"dropdown"}}}],Mt=[{name:"hero_metric",selector:{select:{options:[{value:"auto",label:"Auto - Select most significant"},{value:"temperature",label:"Temperature"}],mode:"dropdown"}}}],At=[{name:"show_temperature",selector:{boolean:{}}},{name:"show_humidity",selector:{boolean:{}}},{name:"show_pressure",selector:{boolean:{}}},{name:"show_wind",selector:{boolean:{}}},{name:"show_wind_arrows",selector:{boolean:{}}},{name:"show_rain",selector:{boolean:{}}},{name:"show_uv",selector:{boolean:{}}},{name:"show_solar",selector:{boolean:{}}}],Ct=[{name:"show_trends",selector:{boolean:{}}},{name:"show_sparklines",selector:{boolean:{}}},{name:"show_min_max",selector:{boolean:{}}},{name:"show_weather_condition",selector:{boolean:{}}}],Et=[{name:"enable_animations",selector:{boolean:{}}}],St=[{name:"enable_warnings",selector:{boolean:{}}}],Ht=Object.keys(ye).map(e=>({name:`entities_${e}`,selector:{entity:{domain:"sensor"}}}));let Dt=class extends ce{constructor(){super(...arguments),this._activeTab="data",this._computeLabel=e=>({device_id:"Weather Station Device",name:"Card Name",entity_mode:"Entity Mode",display_mode:"Display Mode",card_style:"Card Style",data_view:"Default View",history_period:"History Period",trend_period:"Trend Comparison Period",hero_metric:"Hero Metric (for Hero mode)",show_temperature:"Show Temperature",show_humidity:"Show Humidity",show_pressure:"Show Pressure",show_wind:"Show Wind",show_wind_arrows:"Show Wind Compass",show_rain:"Show Rain",show_uv:"Show UV Index",show_solar:"Show Solar Radiation",show_trends:"Show Trend Indicators",show_sparklines:"Show Mini Charts (Sparklines)",show_min_max:"Show Min/Max Values",show_weather_condition:"Show Weather Condition",enable_animations:"Enable Animations",enable_warnings:"Enable Weather Warnings",...Object.fromEntries(Object.entries(ye).map(([e,t])=>[`entities_${e}`,t]))}[e.name]||e.name)}setConfig(e){this._config=e}connectedCallback(){super.connectedCallback(),this._loadHaForm()}async _loadHaForm(){if(customElements.get("ha-form"))return;const e=await(window.loadCardHelpers?.());if(!e)return;const t=await e.createCardElement({type:"entity",entity:"sun.sun"});t&&await(t.getConfigElement?.())}_getFormData(){const e={entity_mode:this._config.entity_mode||"auto",device_id:this._config.device_id||"",name:this._config.name||"",display_mode:this._config.display_mode||"normal",card_style:this._config.card_style||"glass",data_view:this._config.data_view||"live",history_period:this._config.history_period||"day",trend_period:this._config.trend_period||"1h",hero_metric:this._config.hero_metric||"auto",show_temperature:!1!==this._config.show_temperature,show_humidity:!1!==this._config.show_humidity,show_pressure:!1!==this._config.show_pressure,show_wind:!1!==this._config.show_wind,show_wind_arrows:!1!==this._config.show_wind_arrows,show_rain:!1!==this._config.show_rain,show_uv:!1!==this._config.show_uv,show_solar:!1!==this._config.show_solar,show_trends:!1!==this._config.show_trends,show_sparklines:!1!==this._config.show_sparklines,show_min_max:!1!==this._config.show_min_max,show_weather_condition:!1!==this._config.show_weather_condition,enable_animations:!1!==this._config.enable_animations,enable_warnings:this._config.enable_warnings||!1};return this._config.entities&&Object.entries(this._config.entities).forEach(([t,i])=>{e[`entities_${t}`]=i||""}),e}render(){return this.hass&&this._config?I`
       <div class="card-config">
         ${this.renderTabs()}
         <div class="tab-content">
@@ -453,7 +453,7 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
         <ha-form
           .hass=${this.hass}
           .data=${e}
-          .schema=${Ct}
+          .schema=${At}
           .computeLabel=${this._computeLabel}
           @value-changed=${this._formValueChanged}
         ></ha-form>
@@ -474,7 +474,7 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
               <ha-form
                 .hass=${this.hass}
                 .data=${e}
-                .schema=${kt}
+                .schema=${Mt}
                 .computeLabel=${this._computeLabel}
                 @value-changed=${this._formValueChanged}
               ></ha-form>
@@ -509,7 +509,7 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
             <div class="preview-metric">${Ee} 22°C</div>
             <div class="preview-metric">${Se} 65%</div>
             <div class="preview-metric">${De} 15 km/h</div>
-            <div class="preview-metric">${Le} 0 mm</div>
+            <div class="preview-metric">${ze} 0 mm</div>
           </div>
         </div>
       `,compact:I`
@@ -543,7 +543,7 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
         <ha-form
           .hass=${this.hass}
           .data=${e}
-          .schema=${At}
+          .schema=${Ct}
           .computeLabel=${this._computeLabel}
           @value-changed=${this._formValueChanged}
         ></ha-form>
@@ -553,7 +553,7 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
               <ha-form
                 .hass=${this.hass}
                 .data=${e}
-                .schema=${Mt}
+                .schema=${kt}
                 .computeLabel=${this._computeLabel}
                 @value-changed=${this._formValueChanged}
               ></ha-form>
@@ -638,7 +638,7 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
         </div>
 
         <div class="warning-category">
-          <h4>${ze} UV Index</h4>
+          <h4>${Oe} UV Index</h4>
           <ha-form
             .hass=${this.hass}
             .data=${i}
@@ -658,7 +658,7 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
         </div>
 
         <div class="warning-category">
-          <h4>${Le} Rain Rate</h4>
+          <h4>${ze} Rain Rate</h4>
           <ha-form
             .hass=${this.hass}
             .data=${i}
@@ -987,46 +987,46 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
         background: var(--primary-color, #03a9f4);
         color: white;
       }
-    `}};e([me({attribute:!1})],Dt.prototype,"hass",void 0),e([ge()],Dt.prototype,"_config",void 0),e([ge()],Dt.prototype,"_activeTab",void 0),Dt=e([le("weatherstation-card-editor")],Dt);let Tt=class extends ce{constructor(){super(...arguments),this.data=[],this.metric="temperature",this.width=80,this.height=Me,this.color="var(--primary-color, #03a9f4)",this.showGradient=!0,this.showDot=!0,this.showMinMax=!1,this.enableAnimation=!0,this._gradientId=`sp-${this.metric}-${Math.random().toString(36).substr(2,6)}`,this._hasAnimated=!1}render(){if(this.data.length<2)return I`<div class="no-data">—</div>`;const{path:e,min:t,max:i,points:r}=function(e,t,i,r=4){if(e.length<2)return{path:"",min:0,max:0,points:[]};const s=e.map(e=>e.value),a=Math.min(...s),n=Math.max(...s),o=n-a||1,d=t-2*r,c=i-2*r,h=e.map((t,i)=>({x:r+i/(e.length-1)*d,y:r+c-(t.value-a)/o*c,value:t.value})),l=h.map((e,t)=>`${0===t?"M":"L"} ${e.x.toFixed(1)} ${e.y.toFixed(1)}`).join(" ");return{path:l,min:a,max:n,points:h}}(this.data,this.width,this.height,4),s=r[r.length-1],a=this._gradientId,n=this.enableAnimation&&!this._hasAnimated;n&&(this._hasAnimated=!0);const o=r.length>0?`${e} L ${r[r.length-1].x} ${this.height} L ${r[0].x} ${this.height} Z`:"";return I`
+    `}};e([me({attribute:!1})],Dt.prototype,"hass",void 0),e([ge()],Dt.prototype,"_config",void 0),e([ge()],Dt.prototype,"_activeTab",void 0),Dt=e([le("weatherstation-card-editor")],Dt);let Tt=class extends ce{constructor(){super(...arguments),this.data=[],this.metric="temperature",this.width=80,this.height=ke,this.color="var(--primary-color, #03a9f4)",this.showGradient=!0,this.showDot=!0,this.showMinMax=!1,this.enableAnimation=!0,this._gradientId=`sp-${this.metric}-${Math.random().toString(36).substr(2,6)}`,this._hasAnimated=!1}render(){if(this.data.length<2)return I`<div class="no-data">—</div>`;const e=this.showDot?Ae+2:2,{path:t,min:i,max:r,points:s}=function(e,t,i,r=4){if(e.length<2)return{path:"",min:0,max:0,points:[]};const s="number"==typeof r?{top:r,right:r,bottom:r,left:r}:r,a=e.map(e=>e.value),n=Math.min(...a),o=Math.max(...a),d=o-n||1,c=t-s.left-s.right,h=i-s.top-s.bottom,l=e.map((t,i)=>({x:s.left+i/(e.length-1)*c,y:s.top+h-(t.value-n)/d*h,value:t.value})),p=l.map((e,t)=>`${0===t?"M":"L"} ${e.x.toFixed(1)} ${e.y.toFixed(1)}`).join(" ");return{path:p,min:n,max:o,points:l}}(this.data,this.width,this.height,{top:3,right:e,bottom:0,left:0}),a=s[s.length-1],n=this._gradientId,o=this.enableAnimation&&!this._hasAnimated;o&&(this._hasAnimated=!0);const d=s.length>0?`${t} L ${s[s.length-1].x} ${this.height} L ${s[0].x} ${this.height} Z`:"";return I`
       <div class="sparkline-container">
         <svg
-          width="${this.width}"
-          height="${this.height}"
           viewBox="0 0 ${this.width} ${this.height}"
-          class="sparkline-svg ${n?"animate":""}"
+          preserveAspectRatio="none"
+          class="sparkline-svg ${o?"animate":""}"
         >
           <!-- Gradient definition -->
           ${this.showGradient?B`
                 <defs>
-                  <linearGradient id="${a}" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" style="stop-color:${this.color};stop-opacity:0.3" />
-                    <stop offset="100%" style="stop-color:${this.color};stop-opacity:0.05" />
+                  <linearGradient id="${n}" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style="stop-color:${this.color};stop-opacity:0.35" />
+                    <stop offset="100%" style="stop-color:${this.color};stop-opacity:0.0" />
                   </linearGradient>
                 </defs>
                 <path
-                  d="${o}"
-                  fill="url(#${a})"
+                  d="${d}"
+                  fill="url(#${n})"
                   class="area-fill"
                 />
               `:""}
 
-          <!-- Main line -->
+          <!-- Main line (vector-effect keeps stroke width constant when SVG stretches) -->
           <path
-            d="${e}"
+            d="${t}"
             fill="none"
             stroke="${this.color}"
-            stroke-width="${ke}"
+            stroke-width="${Me}"
             stroke-linecap="round"
             stroke-linejoin="round"
+            vector-effect="non-scaling-stroke"
             class="sparkline-path"
           />
 
           <!-- End dot -->
-          ${this.showDot&&s?B`
+          ${this.showDot&&a?B`
                 <circle
-                  cx="${s.x}"
-                  cy="${s.y}"
-                  r="${Ce}"
+                  cx="${a.x}"
+                  cy="${a.y}"
+                  r="${Ae}"
                   fill="${this.color}"
                   class="end-dot"
                 />
@@ -1035,26 +1035,31 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
 
         ${this.showMinMax?I`
               <div class="min-max">
-                <span class="min">${pt(t,this.metric)}</span>
-                <span class="max">${pt(i,this.metric)}</span>
+                <span class="min">${pt(i,this.metric)}</span>
+                <span class="max">${pt(r,this.metric)}</span>
               </div>
             `:""}
       </div>
     `}static get styles(){return n`
       :host {
-        display: inline-flex;
-        align-items: center;
+        display: block;
+        width: 100%;
+        height: 100%;
       }
 
       .sparkline-container {
         display: flex;
         flex-direction: column;
-        align-items: center;
-        gap: 2px;
+        width: 100%;
+        height: 100%;
+        gap: 0;
       }
 
       .sparkline-svg {
         display: block;
+        width: 100%;
+        flex: 1;
+        min-height: 0;
       }
 
       .sparkline-svg.animate .sparkline-path {
@@ -1211,7 +1216,7 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
           transform: scale(1.02);
         }
       }
-    `}};e([me({type:Object})],Pt.prototype,"trend",void 0),e([me({type:String})],Pt.prototype,"metric",void 0),e([me({type:Boolean})],Pt.prototype,"showValue",void 0),e([me({type:Boolean})],Pt.prototype,"compact",void 0),e([me({type:Boolean})],Pt.prototype,"pulse",void 0),Pt=e([le("trend-indicator")],Pt),console.info("%c WEATHERSTATION-CARD %c 2.0.0 ","color: white; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-weight: 700; padding: 4px 8px; border-radius: 4px;","color: #764ba2; background: white; font-weight: 700; padding: 4px 8px; border-radius: 4px;"),window.customCards=window.customCards||[],window.customCards.push({type:"weatherstation-card",name:"Weather Station Card",description:"A modern, sleek card for displaying weather station data with trends and history"});let Lt=class extends ce{constructor(){super(...arguments),this.currentDataView="live",this.currentHistoryPeriod="day",this.expandedMetric=null,this.historyData=new Map,this.trends=new Map,this.lastHistoryFetch=0,this._cachedEntityIds=null,this._cachedDeviceEntities=null,this._historyFetchTimer=null,this._pendingHistoryFetch=!1}shouldUpdate(e){if(!e.has("hass"))return!0;const t=e.get("hass");if(!t)return!0;const i=this._getRelevantEntityIds();let r=!1;for(const e of i){if(t.states[e]!==this.hass.states[e]){r=!0;break}}return r||this._scheduleHistoryFetch(),r}_getRelevantEntityIds(){const e=this.getEntityIds();return Object.values(e).filter(e=>!!e)}static getConfigElement(){return document.createElement("weatherstation-card-editor")}static getStubConfig(){return{type:"custom:weatherstation-card",entity:"",name:"Weather Station",...fe}}setConfig(e){if(!e)throw new Error("Invalid configuration");const t=this.config;this.config={...fe,...e},this.currentDataView=this.config.data_view||"live",this.currentHistoryPeriod=this.config.history_period||"day";const i=t?.device_id,r=t?.entity_mode,s=t?.entities;t&&i===this.config.device_id&&r===this.config.entity_mode&&JSON.stringify(s)===JSON.stringify(this.config.entities)||(this._cachedEntityIds=null,this._cachedDeviceEntities=null)}getCardSize(){switch(this.config.display_mode){case"compact":case"minimal":return 2;case"hero":return 4;default:return 5}}connectedCallback(){super.connectedCallback(),this._scheduleHistoryFetch()}disconnectedCallback(){super.disconnectedCallback(),this._historyFetchTimer&&(clearTimeout(this._historyFetchTimer),this._historyFetchTimer=null)}_scheduleHistoryFetch(){if(this._pendingHistoryFetch)return;Date.now()-this.lastHistoryFetch<3e5||(this._pendingHistoryFetch=!0,this._historyFetchTimer=setTimeout(()=>{this._pendingHistoryFetch=!1,this.fetchHistoryData()},2e3))}async fetchHistoryData(){if(!this.hass||!this.config)return;this.lastHistoryFetch=Date.now();const e=this.getEntityIds(),t=new Date,i=this.getHistoryHours(),r=new Date(t.getTime()-60*i*60*1e3),s=Object.entries(e).filter(e=>!!e[1]);if(0===s.length)return;const a=s.map(([,e])=>e).join(",");try{const e=await this.hass.callApi("GET",`history/period/${r.toISOString()}?filter_entity_id=${a}&end_time=${t.toISOString()}&minimal_response&significant_changes_only`);if(!e)return;const i=new Map;for(const t of e)if(t.length>0){const e=t[0].entity_id;e&&i.set(e,t)}const n=new Map,o=new Map;for(const[e,r]of s){const s=i.get(r);if(!s)continue;const a=[];for(const e of s){const t=parseFloat(e.state);isNaN(t)||a.push({timestamp:new Date(e.last_changed).getTime(),value:t})}if(0===a.length)continue;n.set(e,this.samplePoints(a,30));const d=a[a.length-1].value,c=this.getTrendPeriodHours(),h=t.getTime()-60*c*60*1e3;let l=null;for(const e of a)if(e.timestamp>=h){l=e;break}if(l){const t=dt(d,[l],e,this.config.trend_period||"1h");o.set(e,t)}}this.historyData=n,this.trends=o}catch(e){console.warn("Failed to fetch history:",e)}}getHistoryHours(){switch(this.currentHistoryPeriod){case"week":return 168;case"month":return 720;case"year":return 8760;default:return 24}}getTrendPeriodHours(){switch(this.config.trend_period){case"3h":return 3;case"6h":return 6;case"12h":return 12;case"24h":return 24;default:return 1}}samplePoints(e,t){if(e.length<=t)return e;const i=[e[0]],r=(e.length-1)/(t-1);for(let s=1;s<t-1;s++)i.push(e[Math.round(s*r)]);return i.push(e[e.length-1]),i}getEntityIds(){if(this._cachedEntityIds)return this._cachedEntityIds;if("manual"===this.config.entity_mode&&this.config.entities)return this._cachedEntityIds=this.config.entities,this._cachedEntityIds;const e={};if(this.config.device_id){const t=this._getDeviceEntityMap();for(const[i,r]of Object.entries(t))for(const[t,s]of Object.entries(ve))if(!e[t])for(const a of s)if(i.includes(a)){e[t]=r;break}}return this._cachedEntityIds=e,e}_getDeviceEntityMap(){if(this._cachedDeviceEntities)return this._cachedDeviceEntities;const e=this.hass.entities||{},t={};for(const i of Object.values(e))if(i.device_id===this.config.device_id){t[i.entity_id.split(".")[1].toLowerCase()]=i.entity_id}return this._cachedDeviceEntities=t,t}getWeatherData(){if(!this.hass)return null;return"manual"===(this.config.entity_mode||"auto")&&this.config.entities?this.getDataFromIndividualEntities():this.config.device_id?this.getDataFromDevice():this.getDataFromWeatherEntity()}getDataFromDevice(){if(!this.config.device_id)return null;const e=this._getDeviceEntityMap(),t=this.config.entities||{},i=(t,i)=>{if(i){const e=this.hass.states[i];if(e){const t=parseFloat(e.state);if(!isNaN(t))return t}}for(const i of t)for(const[t,r]of Object.entries(e))if(t.includes(i)){const e=this.hass.states[r];if(e){const t=parseFloat(e.state);if(!isNaN(t))return t}}};return{temperature:i(ve.temperature,t.temperature),humidity:i(ve.humidity,t.humidity),pressure:i(ve.pressure,t.pressure),wind_speed:i(ve.wind_speed,t.wind_speed),wind_direction:i(ve.wind_direction,t.wind_direction),wind_gust:i(ve.wind_gust,t.wind_gust),rain:i(ve.rain,t.rain),rain_rate:i(ve.rain_rate,t.rain_rate),uv_index:i(ve.uv_index,t.uv_index),solar_radiation:i(ve.solar_radiation,t.solar_radiation)}}getDataFromWeatherEntity(){if(!this.config.entity)return null;const e=this.hass.states[this.config.entity];return e?{temperature:e.attributes.temperature,humidity:e.attributes.humidity,pressure:e.attributes.pressure,wind_speed:e.attributes.wind_speed,wind_direction:e.attributes.wind_bearing,wind_gust:e.attributes.wind_gust_speed,wind_avg:e.attributes.wind_speed,wind_direction_avg:e.attributes.wind_bearing_avg,rain:e.attributes.precipitation,rain_rate:e.attributes.precipitation_rate,uv_index:e.attributes.uv_index,solar_radiation:e.attributes.solar_radiation,feels_like:e.attributes.feels_like,dew_point:e.attributes.dew_point}:null}getDataFromIndividualEntities(){if(!this.config.entities)return null;const e=e=>{if(!e)return;const t=this.hass.states[e];if(!t)return;const i=parseFloat(t.state);return isNaN(i)?void 0:i};return{temperature:e(this.config.entities.temperature),humidity:e(this.config.entities.humidity),pressure:e(this.config.entities.pressure),wind_speed:e(this.config.entities.wind_speed),wind_direction:e(this.config.entities.wind_direction),wind_gust:e(this.config.entities.wind_gust),rain:e(this.config.entities.rain),rain_rate:e(this.config.entities.rain_rate),uv_index:e(this.config.entities.uv_index),solar_radiation:e(this.config.entities.solar_radiation)}}_getWarnings(e){return this.config.enable_warnings?function(e,t){if(!t)return[];const i=[];return t.wind_speed?.enabled&&void 0!==e.wind_speed&&e.wind_speed>=t.wind_speed.threshold&&i.push({type:"wind",severity:e.wind_speed>=1.5*t.wind_speed.threshold?"high":"medium",message:t.wind_speed.message||`High wind speed: ${e.wind_speed} km/h`,icon:De}),t.temperature?.enabled&&void 0!==e.temperature&&(void 0!==t.temperature.high_threshold&&e.temperature>=t.temperature.high_threshold&&i.push({type:"temperature",severity:e.temperature>=t.temperature.high_threshold+5?"high":"medium",message:t.temperature.message_high||`High temperature: ${e.temperature}°C`,icon:Ee}),void 0!==t.temperature.low_threshold&&e.temperature<=t.temperature.low_threshold&&i.push({type:"temperature",severity:e.temperature<=t.temperature.low_threshold-5?"high":"medium",message:t.temperature.message_low||`Low temperature: ${e.temperature}°C`,icon:tt})),t.uv?.enabled&&void 0!==e.uv_index&&e.uv_index>=t.uv.threshold&&i.push({type:"uv",severity:e.uv_index>=11?"high":"medium",message:t.uv.message||`High UV index: ${e.uv_index}`,icon:ze}),t.rain_rate?.enabled&&void 0!==e.rain_rate&&e.rain_rate>=t.rain_rate.threshold&&i.push({type:"rain",severity:e.rain_rate>=2*t.rain_rate.threshold?"high":"medium",message:t.rain_rate.message||`Heavy rain: ${e.rain_rate} mm/h`,icon:Le}),i}(e,this.config.warnings):[]}render(){if(!this.hass||!this.config)return I``;const e=this.getWeatherData();if(!e)return this.renderError();const t=this._getWarnings(e),i=ht(),r=lt(e),s=this.config.card_style||"glass";return I`
+    `}};e([me({type:Object})],Pt.prototype,"trend",void 0),e([me({type:String})],Pt.prototype,"metric",void 0),e([me({type:Boolean})],Pt.prototype,"showValue",void 0),e([me({type:Boolean})],Pt.prototype,"compact",void 0),e([me({type:Boolean})],Pt.prototype,"pulse",void 0),Pt=e([le("trend-indicator")],Pt),console.info("%c WEATHERSTATION-CARD %c 2.0.0 ","color: white; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-weight: 700; padding: 4px 8px; border-radius: 4px;","color: #764ba2; background: white; font-weight: 700; padding: 4px 8px; border-radius: 4px;"),window.customCards=window.customCards||[],window.customCards.push({type:"weatherstation-card",name:"Weather Station Card",description:"A modern, sleek card for displaying weather station data with trends and history"});let zt=class extends ce{constructor(){super(...arguments),this.currentDataView="live",this.currentHistoryPeriod="day",this.expandedMetric=null,this.historyData=new Map,this.trends=new Map,this.lastHistoryFetch=0,this._cachedEntityIds=null,this._cachedDeviceEntities=null,this._historyFetchTimer=null,this._pendingHistoryFetch=!1}shouldUpdate(e){if(!e.has("hass"))return!0;const t=e.get("hass");if(!t)return!0;const i=this._getRelevantEntityIds();let r=!1;for(const e of i){if(t.states[e]!==this.hass.states[e]){r=!0;break}}return r||this._scheduleHistoryFetch(),r}_getRelevantEntityIds(){const e=this.getEntityIds();return Object.values(e).filter(e=>!!e)}static getConfigElement(){return document.createElement("weatherstation-card-editor")}static getStubConfig(){return{type:"custom:weatherstation-card",entity:"",name:"Weather Station",...fe}}setConfig(e){if(!e)throw new Error("Invalid configuration");const t=this.config;this.config={...fe,...e},this.currentDataView=this.config.data_view||"live",this.currentHistoryPeriod=this.config.history_period||"day";const i=t?.device_id,r=t?.entity_mode,s=t?.entities;t&&i===this.config.device_id&&r===this.config.entity_mode&&JSON.stringify(s)===JSON.stringify(this.config.entities)||(this._cachedEntityIds=null,this._cachedDeviceEntities=null)}getCardSize(){switch(this.config.display_mode){case"compact":case"minimal":return 2;case"hero":return 4;default:return 5}}connectedCallback(){super.connectedCallback(),this._scheduleHistoryFetch()}disconnectedCallback(){super.disconnectedCallback(),this._historyFetchTimer&&(clearTimeout(this._historyFetchTimer),this._historyFetchTimer=null)}_scheduleHistoryFetch(){if(this._pendingHistoryFetch)return;Date.now()-this.lastHistoryFetch<3e5||(this._pendingHistoryFetch=!0,this._historyFetchTimer=setTimeout(()=>{this._pendingHistoryFetch=!1,this.fetchHistoryData()},2e3))}async fetchHistoryData(){if(!this.hass||!this.config)return;this.lastHistoryFetch=Date.now();const e=this.getEntityIds(),t=new Date,i=this.getHistoryHours(),r=new Date(t.getTime()-60*i*60*1e3),s=Object.entries(e).filter(e=>!!e[1]);if(0===s.length)return;const a=s.map(([,e])=>e).join(",");try{const e=await this.hass.callApi("GET",`history/period/${r.toISOString()}?filter_entity_id=${a}&end_time=${t.toISOString()}&minimal_response&significant_changes_only`);if(!e)return;const i=new Map;for(const t of e)if(t.length>0){const e=t[0].entity_id;e&&i.set(e,t)}const n=new Map,o=new Map;for(const[e,r]of s){const s=i.get(r);if(!s)continue;const a=[];for(const e of s){const t=parseFloat(e.state);isNaN(t)||a.push({timestamp:new Date(e.last_changed).getTime(),value:t})}if(0===a.length)continue;n.set(e,this.samplePoints(a,30));const d=a[a.length-1].value,c=this.getTrendPeriodHours(),h=t.getTime()-60*c*60*1e3;let l=null;for(const e of a)if(e.timestamp>=h){l=e;break}if(l){const t=dt(d,[l],e,this.config.trend_period||"1h");o.set(e,t)}}this.historyData=n,this.trends=o}catch(e){console.warn("Failed to fetch history:",e)}}getHistoryHours(){switch(this.currentHistoryPeriod){case"week":return 168;case"month":return 720;case"year":return 8760;default:return 24}}getTrendPeriodHours(){switch(this.config.trend_period){case"3h":return 3;case"6h":return 6;case"12h":return 12;case"24h":return 24;default:return 1}}samplePoints(e,t){if(e.length<=t)return e;const i=[e[0]],r=(e.length-1)/(t-1);for(let s=1;s<t-1;s++)i.push(e[Math.round(s*r)]);return i.push(e[e.length-1]),i}getEntityIds(){if(this._cachedEntityIds)return this._cachedEntityIds;if("manual"===this.config.entity_mode&&this.config.entities)return this._cachedEntityIds=this.config.entities,this._cachedEntityIds;const e={};if(this.config.device_id){const t=this._getDeviceEntityMap();for(const[i,r]of Object.entries(t))for(const[t,s]of Object.entries(ve))if(!e[t])for(const a of s)if(i.includes(a)){e[t]=r;break}}return this._cachedEntityIds=e,e}_getDeviceEntityMap(){if(this._cachedDeviceEntities)return this._cachedDeviceEntities;const e=this.hass.entities||{},t={};for(const i of Object.values(e))if(i.device_id===this.config.device_id){t[i.entity_id.split(".")[1].toLowerCase()]=i.entity_id}return this._cachedDeviceEntities=t,t}getWeatherData(){if(!this.hass)return null;return"manual"===(this.config.entity_mode||"auto")&&this.config.entities?this.getDataFromIndividualEntities():this.config.device_id?this.getDataFromDevice():this.getDataFromWeatherEntity()}getDataFromDevice(){if(!this.config.device_id)return null;const e=this._getDeviceEntityMap(),t=this.config.entities||{},i=(t,i)=>{if(i){const e=this.hass.states[i];if(e){const t=parseFloat(e.state);if(!isNaN(t))return t}}for(const i of t)for(const[t,r]of Object.entries(e))if(t.includes(i)){const e=this.hass.states[r];if(e){const t=parseFloat(e.state);if(!isNaN(t))return t}}};return{temperature:i(ve.temperature,t.temperature),humidity:i(ve.humidity,t.humidity),pressure:i(ve.pressure,t.pressure),wind_speed:i(ve.wind_speed,t.wind_speed),wind_direction:i(ve.wind_direction,t.wind_direction),wind_gust:i(ve.wind_gust,t.wind_gust),rain:i(ve.rain,t.rain),rain_rate:i(ve.rain_rate,t.rain_rate),uv_index:i(ve.uv_index,t.uv_index),solar_radiation:i(ve.solar_radiation,t.solar_radiation)}}getDataFromWeatherEntity(){if(!this.config.entity)return null;const e=this.hass.states[this.config.entity];return e?{temperature:e.attributes.temperature,humidity:e.attributes.humidity,pressure:e.attributes.pressure,wind_speed:e.attributes.wind_speed,wind_direction:e.attributes.wind_bearing,wind_gust:e.attributes.wind_gust_speed,wind_avg:e.attributes.wind_speed,wind_direction_avg:e.attributes.wind_bearing_avg,rain:e.attributes.precipitation,rain_rate:e.attributes.precipitation_rate,uv_index:e.attributes.uv_index,solar_radiation:e.attributes.solar_radiation,feels_like:e.attributes.feels_like,dew_point:e.attributes.dew_point}:null}getDataFromIndividualEntities(){if(!this.config.entities)return null;const e=e=>{if(!e)return;const t=this.hass.states[e];if(!t)return;const i=parseFloat(t.state);return isNaN(i)?void 0:i};return{temperature:e(this.config.entities.temperature),humidity:e(this.config.entities.humidity),pressure:e(this.config.entities.pressure),wind_speed:e(this.config.entities.wind_speed),wind_direction:e(this.config.entities.wind_direction),wind_gust:e(this.config.entities.wind_gust),rain:e(this.config.entities.rain),rain_rate:e(this.config.entities.rain_rate),uv_index:e(this.config.entities.uv_index),solar_radiation:e(this.config.entities.solar_radiation)}}_getWarnings(e){return this.config.enable_warnings?function(e,t){if(!t)return[];const i=[];return t.wind_speed?.enabled&&void 0!==e.wind_speed&&e.wind_speed>=t.wind_speed.threshold&&i.push({type:"wind",severity:e.wind_speed>=1.5*t.wind_speed.threshold?"high":"medium",message:t.wind_speed.message||`High wind speed: ${e.wind_speed} km/h`,icon:De}),t.temperature?.enabled&&void 0!==e.temperature&&(void 0!==t.temperature.high_threshold&&e.temperature>=t.temperature.high_threshold&&i.push({type:"temperature",severity:e.temperature>=t.temperature.high_threshold+5?"high":"medium",message:t.temperature.message_high||`High temperature: ${e.temperature}°C`,icon:Ee}),void 0!==t.temperature.low_threshold&&e.temperature<=t.temperature.low_threshold&&i.push({type:"temperature",severity:e.temperature<=t.temperature.low_threshold-5?"high":"medium",message:t.temperature.message_low||`Low temperature: ${e.temperature}°C`,icon:tt})),t.uv?.enabled&&void 0!==e.uv_index&&e.uv_index>=t.uv.threshold&&i.push({type:"uv",severity:e.uv_index>=11?"high":"medium",message:t.uv.message||`High UV index: ${e.uv_index}`,icon:Oe}),t.rain_rate?.enabled&&void 0!==e.rain_rate&&e.rain_rate>=t.rain_rate.threshold&&i.push({type:"rain",severity:e.rain_rate>=2*t.rain_rate.threshold?"high":"medium",message:t.rain_rate.message||`Heavy rain: ${e.rain_rate} mm/h`,icon:ze}),i}(e,this.config.warnings):[]}render(){if(!this.hass||!this.config)return I``;const e=this.getWeatherData();if(!e)return this.renderError();const t=this._getWarnings(e),i=ht(),r=lt(e),s=this.config.card_style||"glass";return I`
       <ha-card class="weather-card ${this.config.display_mode} ${s} ${i}">
         ${this.renderBackground(i,r)}
         <div class="card-inner">
@@ -1363,8 +1368,8 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
                 <weather-sparkline
                   .data=${a}
                   .metric=${e}
-                  .width=${100}
-                  .height=${24}
+                  .width=${120}
+                  .height=${40}
                   .showGradient=${!0}
                   .showDot=${!0}
                 ></weather-sparkline>
@@ -1691,13 +1696,15 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
 
       /* Metric Card */
       .metric-card {
+        position: relative;
         background: rgba(0, 0, 0, 0.15);
         border-radius: 12px;
         padding: 14px;
         cursor: pointer;
         transition: background var(--transition-speed), transform var(--transition-speed);
         border: 1px solid rgba(255, 255, 255, 0.1);
-        contain: content;
+        contain: layout style;
+        overflow: hidden;
       }
 
       .metric-card:hover {
@@ -1713,6 +1720,8 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
       }
 
       .metric-header {
+        position: relative;
+        z-index: 1;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -1734,6 +1743,8 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
       }
 
       .metric-body {
+        position: relative;
+        z-index: 1;
         display: flex;
         flex-direction: column;
         gap: 4px;
@@ -1758,11 +1769,19 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
       }
 
       .metric-sparkline {
-        margin-top: 10px;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 50%;
+        pointer-events: none;
+        opacity: 0.6;
       }
 
       /* Min/Max */
       .min-max-row {
+        position: relative;
+        z-index: 1;
         display: flex;
         justify-content: space-between;
         margin-top: 10px;
@@ -2087,4 +2106,4 @@ const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}
           grid-column: span 1;
         }
       }
-    `}};e([me({attribute:!1})],Lt.prototype,"hass",void 0),e([ge()],Lt.prototype,"config",void 0),e([ge()],Lt.prototype,"currentDataView",void 0),e([ge()],Lt.prototype,"currentHistoryPeriod",void 0),e([ge()],Lt.prototype,"expandedMetric",void 0),e([ge()],Lt.prototype,"historyData",void 0),e([ge()],Lt.prototype,"trends",void 0),e([ge()],Lt.prototype,"lastHistoryFetch",void 0),Lt=e([le("weatherstation-card")],Lt);export{Lt as WeatherStationCard};
+    `}};e([me({attribute:!1})],zt.prototype,"hass",void 0),e([ge()],zt.prototype,"config",void 0),e([ge()],zt.prototype,"currentDataView",void 0),e([ge()],zt.prototype,"currentHistoryPeriod",void 0),e([ge()],zt.prototype,"expandedMetric",void 0),e([ge()],zt.prototype,"historyData",void 0),e([ge()],zt.prototype,"trends",void 0),e([ge()],zt.prototype,"lastHistoryFetch",void 0),zt=e([le("weatherstation-card")],zt);export{zt as WeatherStationCard};

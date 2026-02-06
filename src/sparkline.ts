@@ -29,7 +29,17 @@ export class WeatherSparkline extends LitElement {
       return html`<div class="no-data">—</div>`;
     }
 
-    const { path, min, max, points } = generateSparklinePath(this.data, this.width, this.height, 4);
+    // Use asymmetric padding: 0 left, 0 bottom so graph bleeds to edges;
+    // small top padding for the line, right padding so the end-dot isn't clipped
+    const padTop = 3;
+    const padRight = this.showDot ? SPARKLINE_CONFIG.dotRadius + 2 : 2;
+    const padBottom = 0;
+    const padLeft = 0;
+
+    const { path, min, max, points } = generateSparklinePath(
+      this.data, this.width, this.height,
+      { top: padTop, right: padRight, bottom: padBottom, left: padLeft }
+    );
 
     const lastPoint = points[points.length - 1];
     const gradientId = this._gradientId;
@@ -40,7 +50,7 @@ export class WeatherSparkline extends LitElement {
       this._hasAnimated = true;
     }
 
-    // Create area path for gradient fill
+    // Create area path for gradient fill – close to bottom-right then bottom-left
     const areaPath =
       points.length > 0
         ? `${path} L ${points[points.length - 1].x} ${this.height} L ${points[0].x} ${this.height} Z`
@@ -49,9 +59,8 @@ export class WeatherSparkline extends LitElement {
     return html`
       <div class="sparkline-container">
         <svg
-          width="${this.width}"
-          height="${this.height}"
           viewBox="0 0 ${this.width} ${this.height}"
+          preserveAspectRatio="none"
           class="sparkline-svg ${shouldAnimate ? 'animate' : ''}"
         >
           <!-- Gradient definition -->
@@ -59,8 +68,8 @@ export class WeatherSparkline extends LitElement {
             ? svg`
                 <defs>
                   <linearGradient id="${gradientId}" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" style="stop-color:${this.color};stop-opacity:0.3" />
-                    <stop offset="100%" style="stop-color:${this.color};stop-opacity:0.05" />
+                    <stop offset="0%" style="stop-color:${this.color};stop-opacity:0.35" />
+                    <stop offset="100%" style="stop-color:${this.color};stop-opacity:0.0" />
                   </linearGradient>
                 </defs>
                 <path
@@ -71,7 +80,7 @@ export class WeatherSparkline extends LitElement {
               `
             : ''}
 
-          <!-- Main line -->
+          <!-- Main line (vector-effect keeps stroke width constant when SVG stretches) -->
           <path
             d="${path}"
             fill="none"
@@ -79,6 +88,7 @@ export class WeatherSparkline extends LitElement {
             stroke-width="${SPARKLINE_CONFIG.strokeWidth}"
             stroke-linecap="round"
             stroke-linejoin="round"
+            vector-effect="non-scaling-stroke"
             class="sparkline-path"
           />
 
@@ -111,19 +121,24 @@ export class WeatherSparkline extends LitElement {
   static get styles(): CSSResultGroup {
     return css`
       :host {
-        display: inline-flex;
-        align-items: center;
+        display: block;
+        width: 100%;
+        height: 100%;
       }
 
       .sparkline-container {
         display: flex;
         flex-direction: column;
-        align-items: center;
-        gap: 2px;
+        width: 100%;
+        height: 100%;
+        gap: 0;
       }
 
       .sparkline-svg {
         display: block;
+        width: 100%;
+        flex: 1;
+        min-height: 0;
       }
 
       .sparkline-svg.animate .sparkline-path {

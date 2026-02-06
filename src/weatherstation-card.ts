@@ -824,22 +824,22 @@ export class WeatherStationCard extends LitElement {
             : ''}
         </div>
 
+        ${this.config.show_min_max !== false && isExpanded
+          ? this.renderMinMax(metric, history)
+          : ''}
         ${history && this.config.show_sparklines !== false
           ? html`
               <div class="metric-sparkline">
                 <weather-sparkline
                   .data=${history}
                   .metric=${metric}
-                  .width=${100}
-                  .height=${24}
+                  .width=${120}
+                  .height=${36}
                   .showGradient=${true}
                   .showDot=${true}
                 ></weather-sparkline>
               </div>
             `
-          : ''}
-        ${this.config.show_min_max !== false && isExpanded
-          ? this.renderMinMax(metric, history)
           : ''}
       </div>
     `;
@@ -1257,13 +1257,18 @@ export class WeatherStationCard extends LitElement {
 
       /* Metric Card */
       .metric-card {
+        position: relative;
+        display: flex;
+        flex-direction: column;
         background: rgba(0, 0, 0, 0.15);
         border-radius: 12px;
         padding: 14px;
+        padding-bottom: 0;
         cursor: pointer;
         transition: background var(--transition-speed), transform var(--transition-speed);
         border: 1px solid rgba(255, 255, 255, 0.1);
-        contain: content;
+        contain: layout style;
+        overflow: hidden;
       }
 
       .metric-card:hover {
@@ -1324,7 +1329,14 @@ export class WeatherStationCard extends LitElement {
       }
 
       .metric-sparkline {
-        margin-top: 10px;
+        margin-top: 8px;
+        margin-left: -14px;
+        margin-right: -14px;
+        margin-bottom: 0;
+        height: 36px;
+        pointer-events: none;
+        opacity: 0.55;
+        flex-shrink: 0;
       }
 
       /* Min/Max */
@@ -1333,6 +1345,7 @@ export class WeatherStationCard extends LitElement {
         justify-content: space-between;
         margin-top: 10px;
         padding-top: 10px;
+        padding-bottom: 14px;
         border-top: 1px solid rgba(255, 255, 255, 0.1);
         font-size: 0.75rem;
         opacity: 0.8;
